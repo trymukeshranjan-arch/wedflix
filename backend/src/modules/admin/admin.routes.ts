@@ -19,7 +19,13 @@ import { readJson } from "../../lib/validate";
 import { requirePermission } from "../../middleware/authorize";
 import { defaultPermissions } from "../../lib/permissions";
 import { hashToken, randomToken } from "../../lib/tokens";
-import { saveMedia } from "../../services/storage";
+import { saveMedia, mediaKey, isR2Configured } from "../../services/storage";
+import {
+  createMultipartUpload,
+  uploadPart,
+  completeMultipartUpload,
+  abortMultipartUpload,
+} from "../../services/r2";
 import { toContentDto } from "../content/serialize";
 import { buildHome } from "../wedding/home";
 import type { AppEnv } from "../../lib/context";
@@ -95,6 +101,108 @@ adminRoutes.post("/media/upload", async (c) => {
     url: `/api/v1/media/${asset!.id}`,
     status: "ready",
   });
+});
+
+// ── Multipart upload ─────────────────────────────────────────────────────────
+// Large files (videos) are uploaded to R2 in parts. Each part request stays
+// well under Cloud Run's 32 MiB request cap, and the server forwards parts to
+// R2 without ever buffering the whole file. Falls back to the single-request
+// route above when R2 is not configured (local dev).
+const KEY_RE = /^weddings\/[^/]+\//;
+
+adminRoutes.post("/media/multipart/init", async (c) => {
+  const w = c.get("wedding");
+  const body = await readJson(
+    c,
+    z.object({
+      filename: z.string().min(1).max(300),
+      contentType: z.string().max(150).optional(),
+      sizeBytes: z.number().int().min(0).optional(),
+    }),
+  );
+
+  if (!isR2Configured()) return ok(c, { direct: false });
+
+  const contentType = body.contentType || "application/octet-stream";
+  const isVideo = contentType.startsWith("video/");
+  const key = mediaKey(w.id, body.filename);
+  const uploadId = await createMultipartUpload(key, contentType);
+
+  const [asset] = await db
+    .insert(mediaAssets)
+    .values({
+      weddingId: w.id,
+      provider: "r2",
+      kind: isVideo ? "video" : "image",
+      status: "ready",
+      providerId: key,
+      sizeBytes: body.sizeBytes ?? 0,
+    })
+    .returning();
+
+  return ok(c, {
+    direct: true,
+    assetId: asset!.id,
+    url: `/api/v1/media/${asset!.id}`,
+    key,
+    uploadId,
+  });
+});
+
+// Forward one uploaded part to R2. The raw chunk is the request body.
+adminRoutes.put("/media/multipart/part", async (c) => {
+  const w = c.get("wedding");
+  const key = c.req.query("key") ?? "";
+  const uploadId = c.req.query("uploadId") ?? "";
+  const partNumber = Number(c.req.query("partNumber"));
+  if (
+    !key.startsWith(`weddings/${w.id}/`) ||
+    !uploadId ||
+    !Number.isInteger(partNumber) ||
+    partNumber < 1
+  ) {
+    throw errors.badRequest("Invalid upload part request");
+  }
+  const buf = new Uint8Array(await c.req.arrayBuffer());
+  if (buf.length === 0) throw errors.badRequest("Empty part");
+  const etag = await uploadPart(key, uploadId, partNumber, buf);
+  return ok(c, { partNumber, etag });
+});
+
+adminRoutes.post("/media/multipart/complete", async (c) => {
+  const w = c.get("wedding");
+  const body = await readJson(
+    c,
+    z.object({
+      key: z.string().regex(KEY_RE),
+      uploadId: z.string().min(1),
+      parts: z
+        .array(
+          z.object({
+            partNumber: z.number().int().min(1),
+            etag: z.string().min(1),
+          }),
+        )
+        .min(1),
+    }),
+  );
+  if (!body.key.startsWith(`weddings/${w.id}/`)) {
+    throw errors.badRequest("Invalid upload");
+  }
+  await completeMultipartUpload(body.key, body.uploadId, body.parts);
+  return ok(c, { completed: true });
+});
+
+adminRoutes.post("/media/multipart/abort", async (c) => {
+  const w = c.get("wedding");
+  const body = await readJson(
+    c,
+    z.object({ key: z.string().min(1), uploadId: z.string().min(1) }),
+  );
+  if (body.key.startsWith(`weddings/${w.id}/`)) {
+    await abortMultipartUpload(body.key, body.uploadId);
+  }
+  return ok(c, { aborted: true });
 });
 
 // ── Content ──────────────────────────────────────────────────────────────────

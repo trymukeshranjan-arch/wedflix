@@ -44,6 +44,7 @@ interface ApiOptions {
   method?: string;
   body?: unknown; // sent as JSON
   formData?: FormData; // sent as multipart
+  raw?: BodyInit; // sent as-is (e.g. a Blob chunk for upload)
 }
 
 // Single typed entry point for every API call. Always scopes requests to the
@@ -61,6 +62,8 @@ export async function api<T>(
   let body: BodyInit | undefined;
   if (opts.formData) {
     body = opts.formData;
+  } else if (opts.raw !== undefined) {
+    body = opts.raw;
   } else if (opts.body !== undefined) {
     headers["Content-Type"] = "application/json";
     body = JSON.stringify(opts.body);

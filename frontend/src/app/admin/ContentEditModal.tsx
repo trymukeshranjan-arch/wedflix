@@ -35,12 +35,70 @@ function readDuration(file: File): Promise<number | null> {
   });
 }
 
-async function uploadFile(file: File): Promise<{ assetId: string; url: string }> {
-  const fd = new FormData();
-  fd.append("file", file);
-  return api<{ assetId: string; url: string }>("/admin/media/upload", {
-    formData: fd,
+// 20 MiB — comfortably under Cloud Run's 32 MiB request cap.
+const CHUNK_SIZE = 20 * 1024 * 1024;
+
+async function uploadFile(
+  file: File,
+  onProgress?: (fraction: number) => void,
+): Promise<{ assetId: string; url: string }> {
+  const init = await api<{
+    direct: boolean;
+    assetId?: string;
+    url?: string;
+    key?: string;
+    uploadId?: string;
+  }>("/admin/media/multipart/init", {
+    method: "POST",
+    body: {
+      filename: file.name,
+      contentType: file.type,
+      sizeBytes: file.size,
+    },
   });
+
+  // Local dev with no R2 — send the whole file in one request.
+  if (!init.direct) {
+    const fd = new FormData();
+    fd.append("file", file);
+    const r = await api<{ assetId: string; url: string }>(
+      "/admin/media/upload",
+      { formData: fd },
+    );
+    onProgress?.(1);
+    return r;
+  }
+
+  const { assetId, url, key, uploadId } = init;
+  const totalParts = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
+  const parts: { partNumber: number; etag: string }[] = [];
+
+  try {
+    for (let i = 0; i < totalParts; i++) {
+      const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+      const partNumber = i + 1;
+      const r = await api<{ partNumber: number; etag: string }>(
+        `/admin/media/multipart/part?key=${encodeURIComponent(
+          key!,
+        )}&uploadId=${encodeURIComponent(uploadId!)}&partNumber=${partNumber}`,
+        { method: "PUT", raw: chunk },
+      );
+      parts.push(r);
+      onProgress?.((i + 1) / totalParts);
+    }
+    await api("/admin/media/multipart/complete", {
+      method: "POST",
+      body: { key, uploadId, parts },
+    });
+  } catch (e) {
+    api("/admin/media/multipart/abort", {
+      method: "POST",
+      body: { key, uploadId },
+    }).catch(() => {});
+    throw e;
+  }
+
+  return { assetId: assetId!, url: url! };
 }
 
 export function ContentEditModal({
@@ -71,6 +129,7 @@ export function ContentEditModal({
   const [videoStatus, setVideoStatus] = useState<UploadState>(
     isEdit ? "done" : "idle",
   );
+  const [videoProgress, setVideoProgress] = useState(0);
   const [videoAssetId, setVideoAssetId] = useState<string | null>(null);
   const [thumbStatus, setThumbStatus] = useState<UploadState>(
     item?.thumbnail ? "done" : "idle",
@@ -84,10 +143,11 @@ export function ContentEditModal({
 
   const onVideo = async (file: File) => {
     setVideoStatus("uploading");
+    setVideoProgress(0);
     const dur = await readDuration(file);
     if (dur) setDurationSeconds(dur);
     try {
-      const r = await uploadFile(file);
+      const r = await uploadFile(file, setVideoProgress);
       setVideoAssetId(r.assetId);
       setVideoStatus("done");
     } catch {
@@ -204,12 +264,14 @@ export function ContentEditModal({
               )}
               <span className="text-sm text-muted-foreground">
                 {videoStatus === "uploading"
-                  ? "Uploading…"
-                  : videoAssetId
-                    ? "New video uploaded"
-                    : isEdit
-                      ? "Current video kept — click to replace"
-                      : "Click to choose a video"}
+                  ? `Uploading… ${Math.round(videoProgress * 100)}%`
+                  : videoStatus === "error"
+                    ? "Upload failed — click to try again"
+                    : videoAssetId
+                      ? "New video uploaded"
+                      : isEdit
+                        ? "Current video kept — click to replace"
+                        : "Click to choose a video"}
               </span>
             </div>
             <input

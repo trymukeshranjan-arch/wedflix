@@ -1,6 +1,5 @@
 import { useRef, useState, useEffect } from "react";
 import { Play, Info, VolumeX, Volume2, Pencil } from "lucide-react";
-import { motion } from "motion/react";
 import { mediaUrl } from "../../api/client";
 import type { ContentItem, WeddingInfo } from "../../api/types";
 
@@ -61,12 +60,7 @@ export function HeroSection({
 
       <div className="relative h-full flex items-center px-4 md:px-12 pt-20">
         <div className="max-w-xl space-y-5">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.9, ease: "easeOut" }}
-            className="space-y-3"
-          >
+          <div className="space-y-3">
             <p className="text-xs text-accent font-semibold tracking-[0.35em] uppercase">
               A Wedding Original
             </p>
@@ -82,15 +76,10 @@ export function HeroSection({
                 {wedding.tagline}
               </p>
             )}
-          </motion.div>
+          </div>
 
           {hero?.tags && hero.tags.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.55 }}
-              className="flex flex-wrap gap-2 text-xs text-muted-foreground"
-            >
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
               {hero.tags.map((t) => (
                 <span
                   key={t}
@@ -99,16 +88,11 @@ export function HeroSection({
                   {t}
                 </span>
               ))}
-            </motion.div>
+            </div>
           )}
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
-            className="flex flex-wrap gap-3 pt-1"
-          >
-            {hero && (
+          {hero && (
+            <div className="flex flex-wrap gap-3 pt-1">
               <button
                 onClick={() => onPlay(hero)}
                 className="flex items-center gap-2 bg-white hover:bg-white/90 text-black px-7 py-3 rounded font-bold transition-all shadow-lg hover:scale-[1.03] active:scale-95"
@@ -116,15 +100,15 @@ export function HeroSection({
                 <Play className="w-5 h-5 fill-black" />
                 Play
               </button>
-            )}
-            <button
-              onClick={() => hero && onPlay(hero)}
-              className="flex items-center gap-2 bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white px-7 py-3 rounded font-semibold transition-all border border-white/25 hover:scale-[1.03] active:scale-95"
-            >
-              <Info className="w-5 h-5" />
-              More Info
-            </button>
-          </motion.div>
+              <button
+                onClick={() => onPlay(hero)}
+                className="flex items-center gap-2 bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white px-7 py-3 rounded font-semibold transition-all border border-white/25 hover:scale-[1.03] active:scale-95"
+              >
+                <Info className="w-5 h-5" />
+                More Info
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Play, Pencil, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
+import { mediaUrl } from "../../api/client";
 import type { ContentItem } from "../../api/types";
 
 // A content card whose thumbnail plays a muted, looping video preview while
@@ -56,7 +57,7 @@ export function VideoCard({
       <div className="relative aspect-video overflow-hidden rounded-md bg-muted">
         {item.thumbnail && (
           <img
-            src={item.thumbnail}
+            src={mediaUrl(item.thumbnail)}
             alt={item.title}
             loading="lazy"
             className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
@@ -67,7 +68,7 @@ export function VideoCard({
         {item.preview && (
           <video
             ref={videoRef}
-            src={item.preview}
+            src={mediaUrl(item.preview)}
             muted
             loop
             playsInline

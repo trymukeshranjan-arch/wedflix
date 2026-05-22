@@ -91,7 +91,7 @@ adminRoutes.post("/media/upload", async (c) => {
   return ok(c, {
     assetId: asset!.id,
     kind: isVideo ? "video" : "image",
-    url: `${env.PUBLIC_BASE_URL}/api/v1/media/${asset!.id}`,
+    url: `/api/v1/media/${asset!.id}`,
     status: "ready",
   });
 });
@@ -114,7 +114,7 @@ const contentColumns = z.object({
   primaryAssetId: z.string().uuid().optional(),
   episodeNumber: z.number().int().optional(),
   durationSeconds: z.number().int().min(0).optional(),
-  thumbnailUrl: z.string().url().optional(),
+  thumbnailUrl: z.string().optional(),
   visibility: z.enum(["all", "family", "couple"]).optional(),
   status: z.enum(["draft", "published"]).optional(),
   tags: z.array(z.string()).optional(),

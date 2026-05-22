@@ -1,92 +1,52 @@
 # WEDFLIX — Deployment Guide (Google Cloud Run)
 
-Two services, deployed from this one repo:
+The whole app deploys as **one Cloud Run service** from **one Dockerfile at
+the repo root**. The Node/Hono backend serves the API *and* the React
+website — same origin, one URL.
 
-| Service  | Source folder | What it is            |
-|----------|---------------|-----------------------|
-| Backend  | `backend/`    | Hono API (Node)       |
-| Frontend | `frontend/`   | React SPA (nginx)     |
-
-Each folder has a `Dockerfile` — Cloud Run builds and runs them.
-
-> **There is no `.env` file in production.** The values from `backend/.env`
-> are entered as **environment variables on the Cloud Run service**.
+> There is no `.env` file in production. The values from `backend/.env` are
+> entered as **environment variables on the Cloud Run service**.
 
 ---
 
-## 1. Deploy the Backend
+## Deploy
 
-GCP Console → **Cloud Run** → **Create Service** → *Continuously deploy from a
-repository* → connect the GitHub repo, branch `main`.
+GCP Console → **Cloud Run** → **Create Service** → *Continuously deploy from
+a repository* → connect `trymukeshranjan-arch/wedflix`, branch `main`.
 
 - **Build type:** Dockerfile
-- **Source / Dockerfile directory:** `/backend`
-- **Region:** `asia-south1` (Mumbai — closest to the database)
+- **Dockerfile location / directory:** `/` (repo root — the default)
+- **Region:** `asia-south1` (Mumbai)
 - **Authentication:** Allow unauthenticated invocations
 - **Container port:** `8080`
 
-### Backend environment variables (Variables & Secrets tab)
+### Environment variables (Variables & Secrets tab)
 
-| Variable | Value |
-|---|---|
-| `DATABASE_URL` | Supabase pooler connection string (password URL-encoded) |
-| `JWT_SECRET` | a 32-byte random hex — `openssl rand -hex 32` |
-| `R2_ACCOUNT_ID` | Cloudflare R2 account id |
-| `R2_ACCESS_KEY_ID` | R2 access key id |
-| `R2_SECRET_ACCESS_KEY` | R2 secret access key |
-| `R2_BUCKET` | `wedflix-media` |
-| `CORS_ORIGINS` | the frontend URL (set after step 2) |
-| `PUBLIC_BASE_URL` | the backend's own Cloud Run URL (set after first deploy) |
+| Variable | Required | Value |
+|---|---|---|
+| `DATABASE_URL` | ✅ | Supabase pooler connection string |
+| `JWT_SECRET` | ✅ | 32-byte random hex (`openssl rand -hex 32`) |
+| `R2_ACCOUNT_ID` | for uploads | Cloudflare R2 account id |
+| `R2_ACCESS_KEY_ID` | for uploads | R2 access key id |
+| `R2_SECRET_ACCESS_KEY` | for uploads | R2 secret access key |
+| `R2_BUCKET` | for uploads | `wedflix-media` |
 
-The exact values are in `backend/.env` on your machine — copy each one.
-**Do not set `PORT`** — Cloud Run provides it.
-Secrets (`DATABASE_URL`, `JWT_SECRET`, `R2_SECRET_ACCESS_KEY`) are best stored
-in **Secret Manager** and referenced, rather than plain variables.
+All values are in `backend/.env` on your machine — `cat backend/.env` and
+copy them. **Do not set `PORT`** — Cloud Run provides it. `NODE_ENV` and
+`WEB_ROOT` are already set by the Dockerfile.
 
-Deploy → copy the service URL (e.g. `https://wedflix-backend-xxxx.run.app`).
-Then edit the service once more, set `PUBLIC_BASE_URL` to that URL, redeploy.
+Deploy → Cloud Run gives you a URL like `https://wedflix-xxxx.run.app`.
+That single URL **is the site**; `/admin` is the admin portal.
 
----
-
-## 2. Deploy the Frontend
-
-Cloud Run → **Create Service** → same repo, branch `main`.
-
-- **Dockerfile directory:** `/frontend`
-- **Region:** `asia-south1`
-- **Authentication:** Allow unauthenticated invocations
-- **Container port:** `8080`
-
-### Frontend environment variables
-
-| Variable | Value |
-|---|---|
-| `API_URL` | `<backend URL>/api/v1` |
-| `WEDDING_SLUG` | `bismita-debasish` |
-
-Deploy → copy the frontend URL.
+That's it — no CORS setup, no second service, no URL wiring.
 
 ---
 
-## 3. Wire the two together
+## Notes
 
-Go back to the **backend** service → set `CORS_ORIGINS` to the frontend URL →
-redeploy.
-
-Done. The frontend is your live site; `/admin` is the admin portal.
-
----
-
-## Database
-
-The Supabase database is already migrated and seeded. For future schema
-changes, run locally against the production `DATABASE_URL`:
-
-```bash
-cd backend && npm run db:migrate
-```
-
-## Security
-
-Rotate the database password and R2 keys after go-live (they were shared
-during setup). Update the Cloud Run variables afterwards.
+- **Database** is already migrated and seeded. For future schema changes,
+  run `cd backend && npm run db:migrate` against the production `DATABASE_URL`.
+- If the build can't find the Dockerfile, the trigger's *Dockerfile
+  directory* must be `/` (root), not a subfolder.
+- Rotate the database password and R2 keys after go-live, then update the
+  Cloud Run variables.

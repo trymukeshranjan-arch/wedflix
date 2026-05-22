@@ -20,6 +20,10 @@ const schema = z.object({
   UPLOAD_DIR: z.string().default("uploads"),
   PUBLIC_BASE_URL: z.string().default("http://localhost:8787"),
 
+  // Folder containing the built frontend. When set, the API server also
+  // serves the SPA (single-image deploy). Empty = API only.
+  WEB_ROOT: z.string().default(""),
+
   CF_ACCOUNT_ID: z.string().default(""),
   CF_STREAM_API_TOKEN: z.string().default(""),
   CF_STREAM_CUSTOMER_SUBDOMAIN: z.string().default(""),

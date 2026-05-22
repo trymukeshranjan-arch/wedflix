@@ -8,7 +8,7 @@ import {
   Image as ImageIcon,
   Trash2,
 } from "lucide-react";
-import { api, ApiError } from "../api/client";
+import { api, ApiError, mediaUrl } from "../api/client";
 import type { ContentItem } from "../api/types";
 
 const TYPES = ["film", "episode", "teaser", "reel", "moment", "drone"];
@@ -230,7 +230,7 @@ export function ContentEditModal({
               <div className="w-24 h-14 rounded bg-background border border-border overflow-hidden flex-shrink-0">
                 {thumbUrl && (
                   <img
-                    src={thumbUrl}
+                    src={mediaUrl(thumbUrl)}
                     alt=""
                     className="w-full h-full object-cover"
                   />

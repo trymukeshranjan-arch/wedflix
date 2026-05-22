@@ -111,7 +111,7 @@ contentRoutes.get("/:id/playback", async (c) => {
   }
   // Playback streams through the backend media route (R2-backed).
   return ok(c, {
-    src: `${env.PUBLIC_BASE_URL}/api/v1/media/${asset.id}`,
+    src: `/api/v1/media/${asset.id}`,
     kind: "mp4",
     expiresIn: null,
   });
@@ -134,7 +134,7 @@ contentRoutes.get("/:id/download", async (c) => {
   }
 
   return ok(c, {
-    downloadUrl: `${env.PUBLIC_BASE_URL}/api/v1/media/${asset.id}`,
+    downloadUrl: `/api/v1/media/${asset.id}`,
     expiresIn: null,
   });
 });

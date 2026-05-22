@@ -10,7 +10,7 @@ import {
   Heart,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { api } from "../../api/client";
+import { api, mediaUrl } from "../../api/client";
 import type { ContentItem, PlaybackData } from "../../api/types";
 
 const fmt = (t: number) => {
@@ -50,7 +50,7 @@ export function VideoPlayer({
   useEffect(() => {
     let active = true;
     api<PlaybackData>(`/content/${item.id}/playback`)
-      .then((d) => active && setSrc(d.src))
+      .then((d) => active && setSrc(mediaUrl(d.src) ?? null))
       .catch(
         (e) =>
           active &&

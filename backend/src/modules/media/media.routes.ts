@@ -47,7 +47,7 @@ mediaRoutes.get("/:assetId", async (c) => {
         headers,
       });
     }
-    return c.redirect(`${env.PUBLIC_BASE_URL}/uploads/${asset.providerId}`);
+    return c.redirect(`/uploads/${asset.providerId}`);
   }
 
   // External URL (seeded sample videos / imported content).

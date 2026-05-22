@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Play, Info, VolumeX, Volume2, Pencil } from "lucide-react";
 import { motion } from "motion/react";
+import { mediaUrl } from "../../api/client";
 import type { ContentItem, WeddingInfo } from "../../api/types";
 
 export function HeroSection({
@@ -29,8 +30,8 @@ export function HeroSection({
         {hero?.preview ? (
           <video
             ref={heroVideoRef}
-            src={hero.preview}
-            poster={hero.thumbnail ?? undefined}
+            src={mediaUrl(hero.preview)}
+            poster={mediaUrl(hero.thumbnail)}
             autoPlay
             muted
             loop
@@ -39,7 +40,7 @@ export function HeroSection({
           />
         ) : (
           <img
-            src={hero?.thumbnail ?? ""}
+            src={mediaUrl(hero?.thumbnail) ?? ""}
             alt={`${wedding.coupleNameA} & ${wedding.coupleNameB}`}
             className="w-full h-full object-cover"
           />

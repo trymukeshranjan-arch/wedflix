@@ -45,7 +45,7 @@ export function toContentDto(
   // publicly-visible content.
   const preview =
     isVideo && asset && item.visibility === "all"
-      ? `${env.PUBLIC_BASE_URL}/api/v1/media/${asset.id}`
+      ? `/api/v1/media/${asset.id}`
       : null;
   return {
     id: item.id,

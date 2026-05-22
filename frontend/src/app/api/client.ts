@@ -2,6 +2,18 @@ import { API_URL, WEDDING_SLUG } from "./config";
 
 const TOKEN_KEY = "wedflix.token";
 
+// Media URLs returned by the API are root-relative (/api/v1/media/...).
+// Resolve them against the API origin so they work both when the frontend
+// is same-origin as the API (production) and on a separate dev port.
+const API_ORIGIN = API_URL.replace(/\/api\/v1\/?$/, "");
+export function mediaUrl(
+  url: string | null | undefined,
+): string | undefined {
+  if (!url) return undefined;
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${API_ORIGIN}${url}`;
+}
+
 export const tokenStore = {
   get: (): string | null => localStorage.getItem(TOKEN_KEY),
   set: (t: string) => localStorage.setItem(TOKEN_KEY, t),

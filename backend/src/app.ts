@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger as honoLogger } from "hono/logger";
@@ -59,12 +60,29 @@ v1.route("/admin", adminRoutes);
 
 app.route("/api/v1", v1);
 
-app.notFound((c) =>
-  c.json(
+// Serve the bundled frontend (single-image deploy). When WEB_ROOT is set,
+// this server also serves the React SPA — same origin as the API.
+let indexHtml = "";
+if (env.WEB_ROOT) {
+  try {
+    indexHtml = readFileSync(`${env.WEB_ROOT}/index.html`, "utf8");
+  } catch {
+    logger.warn(`WEB_ROOT set but ${env.WEB_ROOT}/index.html is missing`);
+  }
+  app.use("*", serveStatic({ root: env.WEB_ROOT }));
+}
+
+app.notFound((c) => {
+  // SPA fallback — non-API routes serve the frontend's index.html so that
+  // client-side routes like /admin work on a full page load.
+  if (indexHtml && !c.req.path.startsWith("/api")) {
+    return c.html(indexHtml);
+  }
+  return c.json(
     { error: { code: "not_found", message: "Route not found" } },
     404,
-  ),
-);
+  );
+});
 
 app.onError((err, c) => {
   if (err instanceof AppError) {

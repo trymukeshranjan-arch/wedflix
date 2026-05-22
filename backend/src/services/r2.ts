@@ -113,13 +113,19 @@ export async function putObject(
   }
 }
 
-// Fetch an object from R2, forwarding an optional HTTP Range header so the
-// backend media route can stream video with seek support.
-export async function getObject(
+// Generate a short-lived signed URL for reading an object straight from R2.
+// The media route redirects browsers here so video bytes never proxy through
+// the API server — Cloud Run can't reliably stream large responses, and this
+// also keeps Range/seek support and avoids egress through the API.
+export async function presignGetUrl(
   key: string,
-  range?: string,
-): Promise<Response> {
-  const headers: Record<string, string> = {};
-  if (range) headers["Range"] = range;
-  return r2.fetch(objectUrl(key), { method: "GET", headers });
+  expiresSeconds: number = env.SIGNED_URL_TTL_SECONDS,
+): Promise<string> {
+  const url = new URL(objectUrl(key));
+  url.searchParams.set("X-Amz-Expires", String(expiresSeconds));
+  const signed = await r2.sign(url.toString(), {
+    method: "GET",
+    aws: { signQuery: true },
+  });
+  return signed.url;
 }

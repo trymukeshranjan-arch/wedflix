@@ -4,21 +4,14 @@ import { db } from "../../db/client";
 import { mediaAssets } from "../../db/schema";
 import { env } from "../../config/env";
 import { errors } from "../../lib/errors";
-import { getObject, isR2Configured } from "../../services/r2";
+import { presignGetUrl, isR2Configured } from "../../services/r2";
 import type { AppEnv } from "../../lib/context";
 
 export const mediaRoutes = new Hono<AppEnv>();
 
-const PASS_THROUGH = [
-  "content-type",
-  "content-length",
-  "content-range",
-  "accept-ranges",
-  "etag",
-];
-
 // Serves an uploaded media asset:
-//  - R2-stored  → streamed from R2, forwarding HTTP Range for video seeking
+//  - R2-stored  → redirected to a short-lived signed R2 URL, so the browser
+//                 streams (with Range/seek) straight from R2
 //  - local      → redirected to the static /uploads route
 //  - external   → redirected to the stored URL (seeded sample videos)
 mediaRoutes.get("/:assetId", async (c) => {
@@ -29,23 +22,7 @@ mediaRoutes.get("/:assetId", async (c) => {
 
   if (asset.providerId) {
     if (isR2Configured()) {
-      const upstream = await getObject(
-        asset.providerId,
-        c.req.header("range"),
-      );
-      if (!upstream.ok && upstream.status !== 206) {
-        throw errors.notFound("Media not found");
-      }
-      const headers = new Headers();
-      for (const h of PASS_THROUGH) {
-        const v = upstream.headers.get(h);
-        if (v) headers.set(h, v);
-      }
-      headers.set("Cache-Control", "public, max-age=3600");
-      return new Response(upstream.body, {
-        status: upstream.status,
-        headers,
-      });
+      return c.redirect(await presignGetUrl(asset.providerId));
     }
     return c.redirect(`/uploads/${asset.providerId}`);
   }

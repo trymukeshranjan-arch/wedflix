@@ -1,0 +1,64 @@
+import { API_URL, WEDDING_SLUG } from "./config";
+
+const TOKEN_KEY = "wedflix.token";
+
+export const tokenStore = {
+  get: (): string | null => localStorage.getItem(TOKEN_KEY),
+  set: (t: string) => localStorage.setItem(TOKEN_KEY, t),
+  clear: () => localStorage.removeItem(TOKEN_KEY),
+};
+
+export class ApiError extends Error {
+  status: number;
+  code: string;
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
+interface ApiOptions {
+  method?: string;
+  body?: unknown; // sent as JSON
+  formData?: FormData; // sent as multipart
+}
+
+// Single typed entry point for every API call. Always scopes requests to the
+// current wedding tenant and attaches the session token when present.
+export async function api<T>(
+  path: string,
+  opts: ApiOptions = {},
+): Promise<T> {
+  const headers: Record<string, string> = {
+    "X-Wedding-Slug": WEDDING_SLUG,
+  };
+  const token = tokenStore.get();
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  let body: BodyInit | undefined;
+  if (opts.formData) {
+    body = opts.formData;
+  } else if (opts.body !== undefined) {
+    headers["Content-Type"] = "application/json";
+    body = JSON.stringify(opts.body);
+  }
+
+  const res = await fetch(`${API_URL}${path}`, {
+    method: opts.method ?? "GET",
+    headers,
+    body,
+  });
+
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = (json as { error?: { code?: string; message?: string } })
+      .error;
+    throw new ApiError(
+      res.status,
+      err?.code ?? "error",
+      err?.message ?? "Something went wrong",
+    );
+  }
+  return (json as { data: T }).data;
+}

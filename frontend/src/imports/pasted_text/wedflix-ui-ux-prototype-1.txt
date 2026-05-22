@@ -1,0 +1,475 @@
+Design a complete premium UI/UX prototype in Figma for a cinematic OTT-style wedding streaming platform named “WEDFLIX”.
+
+IMPORTANT:
+Use the attached screenshots as visual references for:
+- Netflix-inspired layout
+- profile selection screen
+- hero section structure
+- content card rows
+- OTT cinematic presentation
+
+Do NOT copy Netflix directly.
+Create an original luxury wedding streaming aesthetic inspired by Netflix, Apple TV, and cinematic wedding films.
+
+The final design should look:
+- ultra premium
+- cinematic
+- emotional
+- immersive
+- production ready
+- modern startup quality
+
+======================================================
+OVERALL DESIGN DIRECTION
+======================================================
+
+Theme:
+Luxury cinematic wedding OTT platform.
+
+Mood:
+- emotional
+- timeless
+- modern
+- immersive
+- premium Indian wedding storytelling
+
+Visual Feel:
+- Netflix x Indian Wedding Cinema
+- dark luxury
+- cinematic lighting
+- ambient overlays
+- soft glows
+- film grain
+- OTT streaming interface
+
+Primary Colors:
+- Background Black: #070707
+- Soft Black: #111111
+- Netflix Red Accent: #E50914
+- Warm White: #F5F5F5
+- Gold Accent: #D4AF37
+- Deep Maroon Accent: #3B0F16
+
+Typography:
+- cinematic serif for titles
+- modern sans-serif for body
+- bold large hero typography
+- elegant wedding ornament typography
+
+Animations to imply:
+- cinematic fades
+- smooth zooms
+- hover previews
+- auto-playing content
+- glassmorphism overlays
+- smooth OTT transitions
+
+======================================================
+DESIGN COMPLETE FLOW
+======================================================
+
+Create all screens and connect them in proper UX flow.
+
+FLOW ORDER:
+
+1. SPLASH SCREEN
+2. PROFILE SELECTION
+3. OTT INTRO ANIMATION SCREEN
+4. HOME SCREEN
+5. SEASONS PAGE
+6. FILM DETAIL PAGE
+7. VIDEO PLAYER PAGE
+8. REELS EXPERIENCE
+9. PHOTO GALLERY
+10. FAMILY ACCESS
+11. MOBILE APP VERSION
+
+======================================================
+1. SPLASH SCREEN
+======================================================
+
+Minimal cinematic loading screen.
+
+Background:
+pure black.
+
+Center:
+animated WEDFLIX logo.
+
+Animation reference:
+Netflix intro style.
+
+Effects:
+- glowing red light
+- cinematic particles
+- ambient shadows
+- subtle soundwave effect visualization
+
+Text below:
+“Streaming Your Memories Forever”
+
+Transition:
+logo zoom transition into next screen.
+
+======================================================
+2. PROFILE SELECTION SCREEN
+======================================================
+
+Inspired by Netflix profile selection.
+
+Heading:
+“Who’s Watching?”
+
+Profiles:
+- Bride
+- Groom
+- Family
+- Friends
+
+Each profile card:
+- cinematic avatar
+- soft red hover glow
+- smooth scale animation
+- rounded square cards
+
+Background:
+dark black gradient.
+
+Interaction:
+When clicked:
+- profile enlarges
+- smooth fade
+- OTT intro animation starts
+
+The layout should resemble the attached reference image.
+
+======================================================
+3. OTT INTRO SCREEN
+======================================================
+
+A cinematic logo reveal.
+
+Background:
+pure black.
+
+Center:
+WEDFLIX logo reveal animation.
+
+Effects:
+- red glow streaks
+- cinematic soundwave visuals
+- glossy reflections
+- light burst animation
+
+Duration:
+2–3 seconds.
+
+Purpose:
+make platform feel premium like OTT streaming service.
+
+======================================================
+4. HOME SCREEN (MOST IMPORTANT)
+======================================================
+
+Use attached Netflix homepage reference.
+
+Design a cinematic wedding homepage.
+
+======================================================
+HERO SECTION
+======================================================
+
+Full-width autoplay cinematic wedding teaser video.
+
+Features:
+- muted autoplay
+- smooth looping
+- dark cinematic overlay
+- luxury blur gradient
+- no visible lag indicators
+
+Top Navigation:
+- WEDFLIX logo
+- Home
+- Seasons
+- Our Films
+- Little Moments
+- Search Icon
+- Profile Icon
+
+Hero Content:
+Small text:
+“A WEDDING ORIGINAL”
+
+Large decorative couple names:
+“MRUNAL ∞ ANIRUDH”
+
+Subheadline:
+“#1 Love In Every Frame”
+
+Description:
+A short emotional cinematic wedding description.
+
+Metadata:
+- Celebration
+- Romance
+- Family
+
+Buttons:
+- Play
+- More Info
+
+Right side:
+mute/unmute floating control.
+
+======================================================
+CONTENT ROWS
+======================================================
+
+Create cinematic OTT rows.
+
+Sections:
+- The Celebration Series
+- Our Films
+- Little Moments
+- Wedding Highlights
+- Family Emotions
+- Couple Reels
+- Drone Films
+- Emotional Scenes
+
+Card Style:
+- large cinematic thumbnails
+- hover zoom animation
+- autoplay preview on hover
+- soft red glow
+- smooth scaling
+
+Each card contains:
+- film title
+- season number
+- episode title
+- emotional subtitle
+
+Examples:
+“Pure Celebration”
+“Lights Come Alive”
+“Before Forever”
+
+======================================================
+5. SEASONS PAGE
+======================================================
+
+Design like a Netflix series page.
+
+Each season card should feel cinematic.
+
+Season Structure Example:
+
+Season 1:
+The Wedding Story
+
+Episodes:
+- Proposal Film
+- Pre Wedding
+- Haldi
+- Mehendi
+- Wedding Ceremony
+- Reception
+
+Season 2:
+The Anniversary Story
+
+Season 3:
+The Family Story
+
+Visuals:
+- OTT episode layouts
+- emotional storytelling
+- autoplay teaser previews
+
+======================================================
+6. FILM DETAIL PAGE
+======================================================
+
+Dedicated film detail screen.
+
+Layout:
+- cinematic poster/banner
+- film synopsis
+- emotional description
+- runtime
+- wedding date
+- cast/family members
+- related films
+
+Buttons:
+- Play Film
+- Add to Favorites
+- Share Privately
+
+Below:
+recommended memories.
+
+======================================================
+7. VIDEO PLAYER PAGE
+======================================================
+
+Design premium OTT player.
+
+Inspired by:
+Netflix + Apple TV.
+
+Features:
+- fullscreen cinematic playback
+- ambient black surroundings
+- preview thumbnails on scrub
+- ultra clean controls
+- autoplay next episode
+- continue watching
+
+Right Side:
+“More Memories”
+
+Include:
+- 4K badge
+- private viewing icon
+- Dolby-style labels
+
+======================================================
+8. REELS EXPERIENCE
+======================================================
+
+Inspired by:
+Instagram Reels + TikTok.
+
+Features:
+- fullscreen vertical playback
+- autoplay videos
+- swipe navigation
+- cinematic transitions
+- floating controls
+- music indicator
+
+Categories:
+- Couple Moments
+- Bridal Entry
+- Dance Floor
+- Emotional Reactions
+- Wedding Teasers
+
+Very smooth app-like UI.
+
+======================================================
+9. PHOTO GALLERY
+======================================================
+
+DO NOT design like Google Photos.
+
+Design:
+A cinematic immersive photo experience.
+
+Modes:
+
+A. Timeline Mode
+- emotional chronological journey
+- anniversary resurfacing
+
+B. Cinematic Masonry Grid
+- luxury spacing
+- fullscreen previews
+- swipe navigation
+
+Features:
+- download originals
+- favorites
+- family sharing
+- slideshow mode
+
+Popup Example:
+“2 Years Ago Today ❤️”
+
+======================================================
+10. FAMILY ACCESS SCREEN
+======================================================
+
+Family member access management.
+
+Cards:
+- Bride
+- Groom
+- Parents
+- Family
+- Friends
+
+Permissions:
+- View
+- Download
+- Share
+- Upload
+
+Design:
+minimal dark luxury UI.
+
+======================================================
+11. MOBILE APP VERSION
+======================================================
+
+Design responsive mobile layouts.
+
+Must feel:
+- native app
+- OTT streaming app
+- cinematic mobile experience
+
+Include:
+- bottom navigation
+- autoplay reels
+- swipe gestures
+- fullscreen stories
+- instant transitions
+
+======================================================
+UX FLOW CONNECTIONS
+======================================================
+
+Connect screens properly in prototype mode.
+
+FLOW:
+
+Splash Screen
+→ Profile Selection
+→ OTT Intro Animation
+→ Home Screen
+→ Season Selection
+→ Film Details
+→ Video Playback
+→ Reels
+→ Gallery
+→ Family Access
+
+Transitions:
+- smooth fades
+- cinematic zoom
+- Netflix-style hover scaling
+- soft blur transitions
+
+======================================================
+FINAL OUTPUT EXPECTATION
+======================================================
+
+The final Figma prototype should:
+- look like a real OTT startup
+- feel emotionally premium
+- resemble a cinematic streaming app
+- be developer handoff ready
+- include desktop + mobile designs
+- include interactive prototype flow
+- include component system
+- include dark mode styling
+- include hover interaction states
+
+The emotional feeling should be:
+
+“This is not where wedding memories are stored.
+This is where they live forever.”

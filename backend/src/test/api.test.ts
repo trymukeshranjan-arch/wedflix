@@ -461,6 +461,61 @@ describe("validation", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+describe("profiles — who's watching", () => {
+  it("lists the wedding's profiles", async () => {
+    const r = await call("/wedding/profiles");
+    assert.equal(r.status, 200);
+    assert.ok(r.data.length >= 4, "demo wedding should have 4 profiles");
+  });
+
+  it("admin can create and delete a profile", async () => {
+    const created = await call("/admin/profiles", {
+      token: adminToken,
+      method: "POST",
+      body: { name: "E2E Profile" },
+    });
+    assert.equal(created.status, 201);
+    const del = await call(`/admin/profiles/${created.data.id}`, {
+      token: adminToken,
+      method: "DELETE",
+    });
+    assert.equal(del.status, 200);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe("studio — multi-wedding", () => {
+  it("rejects studio routes without auth", async () => {
+    const r = await call("/studio/weddings");
+    assert.equal(r.status, 401);
+  });
+
+  it("lists the studio's weddings", async () => {
+    const r = await call("/studio/weddings", { token: adminToken });
+    assert.equal(r.status, 200);
+    assert.ok(
+      r.data.some((w: { slug: string }) => w.slug === "bismita-debasish"),
+    );
+  });
+
+  it("creates a new wedding that resolves as its own tenant", async () => {
+    const slug = `e2e-wedding-${Date.now()}`;
+    const r = await call("/studio/weddings", {
+      token: adminToken,
+      method: "POST",
+      body: { coupleNameA: "Aarav", coupleNameB: "Ananya", slug },
+    });
+    assert.equal(r.status, 201);
+    assert.equal(r.data.slug, slug);
+
+    const home = await call("/wedding/home", { slug });
+    assert.equal(home.status, 200);
+    assert.equal(home.data.wedding.slug, slug);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 describe("content visibility", () => {
   it("couple-only content is hidden from anonymous viewers", async () => {
     const created = await call("/admin/content", {

@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { useAuth } from "../lib/auth";
+import { setWeddingSlug } from "../api/client";
 import { AdminLogin } from "./AdminLogin";
+import { AdminWeddingList } from "./AdminWeddingList";
 import { AdminPortal } from "./AdminPortal";
 
 export function AdminApp() {
   const { user, loading } = useAuth();
+  const [slug, setSlug] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -14,5 +18,18 @@ export function AdminApp() {
   }
 
   if (!user) return <AdminLogin />;
-  return <AdminPortal />;
+
+  if (!slug) {
+    return (
+      <AdminWeddingList
+        onPick={(s) => {
+          setWeddingSlug(s);
+          setSlug(s);
+        }}
+      />
+    );
+  }
+
+  // key forces a clean remount when switching weddings.
+  return <AdminPortal key={slug} onBack={() => setSlug(null)} />;
 }

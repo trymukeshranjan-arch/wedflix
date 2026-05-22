@@ -8,6 +8,7 @@ import {
   mediaAssets,
   memberships,
   memoryFeed,
+  profiles,
   seasons,
   users,
 } from "../../db/schema";
@@ -30,6 +31,20 @@ weddingRoutes.get("/", (c) => ok(c, publicWedding(c.get("wedding"))));
 weddingRoutes.get("/home", async (c) =>
   ok(c, await buildHome(c.get("wedding"), { includeDrafts: false })),
 );
+
+// "Who's watching" profiles for this wedding.
+weddingRoutes.get("/profiles", async (c) => {
+  const w = c.get("wedding");
+  const rows = await db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.weddingId, w.id))
+    .orderBy(asc(profiles.sortOrder));
+  return ok(
+    c,
+    rows.map((p) => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl })),
+  );
+});
 
 // Seasons with their episodes.
 weddingRoutes.get("/seasons", async (c) => {

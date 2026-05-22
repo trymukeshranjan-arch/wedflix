@@ -2,6 +2,16 @@ import { API_URL, WEDDING_SLUG } from "./config";
 
 const TOKEN_KEY = "wedflix.token";
 
+// Which wedding (tenant) API calls target. Defaults to the configured
+// wedding; the /w/:slug router updates it per the URL.
+let currentSlug: string = WEDDING_SLUG;
+export function setWeddingSlug(slug: string) {
+  if (slug) currentSlug = slug;
+}
+export function getWeddingSlug(): string {
+  return currentSlug;
+}
+
 // Media URLs returned by the API are root-relative (/api/v1/media/...).
 // Resolve them against the API origin so they work both when the frontend
 // is same-origin as the API (production) and on a separate dev port.
@@ -43,7 +53,7 @@ export async function api<T>(
   opts: ApiOptions = {},
 ): Promise<T> {
   const headers: Record<string, string> = {
-    "X-Wedding-Slug": WEDDING_SLUG,
+    "X-Wedding-Slug": currentSlug,
   };
   const token = tokenStore.get();
   if (token) headers["Authorization"] = `Bearer ${token}`;

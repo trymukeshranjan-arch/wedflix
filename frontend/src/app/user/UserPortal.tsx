@@ -10,7 +10,13 @@ import { VideoPlayer } from "./components/VideoPlayer";
 import { SearchOverlay } from "./components/SearchOverlay";
 import { PortalStyles } from "./components/PortalStyles";
 
-export function UserPortal() {
+export function UserPortal({
+  profileName,
+  onSwitchProfile,
+}: {
+  profileName?: string;
+  onSwitchProfile?: () => void;
+} = {}) {
   const [home, setHome] = useState<HomeData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeVideo, setActiveVideo] = useState<ContentItem | null>(null);
@@ -133,6 +139,15 @@ export function UserPortal() {
             >
               <Search className="w-5 h-5" />
             </button>
+            {profileName && (
+              <button
+                onClick={onSwitchProfile}
+                className="hidden sm:block text-sm text-foreground/70 hover:text-foreground transition-colors"
+                title="Switch profile"
+              >
+                {profileName}
+              </button>
+            )}
             <Link
               to="/admin"
               className="hover:text-primary transition-colors"

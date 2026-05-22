@@ -14,6 +14,7 @@ import {
   collectionItems,
   users,
   memberships,
+  profiles,
 } from "./schema";
 import { hashPassword } from "../services/auth";
 
@@ -157,6 +158,14 @@ export async function seedDatabase() {
     displayName: "Admin",
     status: "active",
   });
+
+  // "Who's watching" profiles for the demo wedding.
+  await db.insert(profiles).values([
+    { weddingId: wId, name: "Bismita", sortOrder: 0 },
+    { weddingId: wId, name: "Debasish", sortOrder: 1 },
+    { weddingId: wId, name: "Family", sortOrder: 2 },
+    { weddingId: wId, name: "Friends", sortOrder: 3 },
+  ]);
 
   const [season] = await db
     .insert(seasons)

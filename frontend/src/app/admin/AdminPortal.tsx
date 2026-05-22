@@ -1,6 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Pencil, ExternalLink, LogOut } from "lucide-react";
-import { Link } from "react-router";
+import {
+  Plus,
+  Pencil,
+  ExternalLink,
+  LogOut,
+  ArrowLeft,
+  Users,
+} from "lucide-react";
 import { AnimatePresence } from "motion/react";
 import { api, ApiError } from "../api/client";
 import { useAuth } from "../lib/auth";
@@ -11,16 +17,18 @@ import { VideoPlayer } from "../user/components/VideoPlayer";
 import { PortalStyles } from "../user/components/PortalStyles";
 import { ContentEditModal, type EditTarget } from "./ContentEditModal";
 import { WeddingInfoModal } from "./WeddingInfoModal";
+import { ProfilesModal } from "./ProfilesModal";
 
 // The admin portal mirrors the user portal exactly — same hero, rows and
 // cards — and overlays Edit / Add / Delete controls on everything.
-export function AdminPortal() {
+export function AdminPortal({ onBack }: { onBack?: () => void }) {
   const { logout } = useAuth();
   const [home, setHome] = useState<HomeData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeVideo, setActiveVideo] = useState<ContentItem | null>(null);
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
   const [weddingModal, setWeddingModal] = useState(false);
+  const [profilesOpen, setProfilesOpen] = useState(false);
 
   const load = useCallback(() => {
     api<HomeData>("/admin/home")
@@ -108,6 +116,9 @@ export function AdminPortal() {
           onSaved={refetch}
         />
       )}
+      {profilesOpen && (
+        <ProfilesModal onClose={() => setProfilesOpen(false)} />
+      )}
 
       {/* Admin bar */}
       <nav className="fixed top-0 left-0 right-0 z-50 px-4 md:px-8 py-3 bg-background/95 backdrop-blur-md border-b border-border">
@@ -122,6 +133,16 @@ export function AdminPortal() {
             <span className="text-[10px] font-bold bg-accent/15 text-accent px-2 py-0.5 rounded-full tracking-wider">
               ADMIN
             </span>
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground ml-1"
+                title="All weddings"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden md:inline">Weddings</span>
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-1.5 md:gap-2">
             <button
@@ -132,19 +153,28 @@ export function AdminPortal() {
               <span className="hidden sm:inline">Add Content</span>
             </button>
             <button
+              onClick={() => setProfilesOpen(true)}
+              className={`${btn} text-muted-foreground hover:text-foreground hover:bg-foreground/5`}
+            >
+              <Users className="w-4 h-4" />
+              <span className="hidden md:inline">Profiles</span>
+            </button>
+            <button
               onClick={() => setWeddingModal(true)}
               className={`${btn} text-muted-foreground hover:text-foreground hover:bg-foreground/5`}
             >
               <Pencil className="w-4 h-4" />
               <span className="hidden md:inline">Couple Info</span>
             </button>
-            <Link
-              to="/"
+            <a
+              href={`/w/${wedding.slug}`}
+              target="_blank"
+              rel="noreferrer"
               className={`${btn} text-muted-foreground hover:text-foreground hover:bg-foreground/5`}
             >
               <ExternalLink className="w-4 h-4" />
               <span className="hidden md:inline">View Site</span>
-            </Link>
+            </a>
             <button
               onClick={logout}
               className={`${btn} text-muted-foreground hover:text-primary hover:bg-foreground/5`}

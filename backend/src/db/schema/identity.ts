@@ -179,3 +179,23 @@ export const invites = pgTable(
     index("invites_wedding_idx").on(t.weddingId),
   ],
 );
+
+// "Who's watching" profiles — per wedding. Lightweight personas (the couple,
+// Family, Friends) shown on the profile-picker screen. Selecting a profile
+// is personalization, not authentication.
+export const profiles = pgTable(
+  "profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    weddingId: uuid("wedding_id")
+      .notNull()
+      .references(() => weddings.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    avatarUrl: text("avatar_url"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("profiles_wedding_idx").on(t.weddingId)],
+);

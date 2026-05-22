@@ -8,6 +8,7 @@ import {
   contentItems,
   invites,
   mediaAssets,
+  profiles,
   seasons,
   weddings,
 } from "../../db/schema";
@@ -315,6 +316,62 @@ adminRoutes.get("/collections", async (c) => {
     .where(eq(collections.weddingId, w.id))
     .orderBy(asc(collections.position));
   return ok(c, rows);
+});
+
+// ── Profiles ("Who's watching") ──────────────────────────────────────────────
+const profileSchema = z.object({
+  name: z.string().min(1).max(80),
+  avatarUrl: z.string().optional(),
+  sortOrder: z.number().int().optional(),
+});
+
+adminRoutes.get("/profiles", async (c) => {
+  const w = c.get("wedding");
+  const rows = await db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.weddingId, w.id))
+    .orderBy(asc(profiles.sortOrder));
+  return ok(c, rows);
+});
+
+adminRoutes.post("/profiles", async (c) => {
+  const w = c.get("wedding");
+  const body = await readJson(c, profileSchema);
+  const [row] = await db
+    .insert(profiles)
+    .values({
+      weddingId: w.id,
+      name: body.name,
+      avatarUrl: body.avatarUrl,
+      sortOrder: body.sortOrder ?? 0,
+    })
+    .returning();
+  return created(c, row);
+});
+
+adminRoutes.patch("/profiles/:id", async (c) => {
+  const w = c.get("wedding");
+  const id = c.req.param("id");
+  const body = await readJson(c, profileSchema.partial());
+  const [row] = await db
+    .update(profiles)
+    .set(body)
+    .where(and(eq(profiles.id, id), eq(profiles.weddingId, w.id)))
+    .returning();
+  if (!row) throw errors.notFound("Profile not found");
+  return ok(c, row);
+});
+
+adminRoutes.delete("/profiles/:id", async (c) => {
+  const w = c.get("wedding");
+  const id = c.req.param("id");
+  const deleted = await db
+    .delete(profiles)
+    .where(and(eq(profiles.id, id), eq(profiles.weddingId, w.id)))
+    .returning({ id: profiles.id });
+  if (!deleted.length) throw errors.notFound("Profile not found");
+  return ok(c, { deleted: true });
 });
 
 // ── Invites ──────────────────────────────────────────────────────────────────

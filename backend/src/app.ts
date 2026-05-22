@@ -17,6 +17,7 @@ import { engagementRoutes } from "./modules/engagement/engagement.routes";
 import { adminRoutes } from "./modules/admin/admin.routes";
 import { webhookRoutes } from "./modules/webhooks/webhooks.routes";
 import { mediaRoutes } from "./modules/media/media.routes";
+import { studioRoutes } from "./modules/studio/studio.routes";
 import type { AppEnv } from "./lib/context";
 
 export const app = new Hono<AppEnv>();
@@ -53,10 +54,14 @@ v1.use("/content/*", resolveTenant, optionalAuth);
 v1.use("/engagement/*", resolveTenant, requireAuth, requireMembership);
 v1.use("/admin/*", resolveTenant, requireAuth, requireMembership);
 
+// Studio routes are NOT tenant-scoped — they manage weddings across the studio.
+v1.use("/studio/*", requireAuth);
+
 v1.route("/wedding", weddingRoutes);
 v1.route("/content", contentRoutes);
 v1.route("/engagement", engagementRoutes);
 v1.route("/admin", adminRoutes);
+v1.route("/studio", studioRoutes);
 
 app.route("/api/v1", v1);
 

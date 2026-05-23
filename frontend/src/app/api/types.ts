@@ -1,3 +1,5 @@
+import type { WeddingTheme } from "../lib/theme";
+
 export interface ContentItem {
   id: string;
   type: string;
@@ -25,7 +27,7 @@ export interface WeddingInfo {
   coupleNameB: string;
   tagline: string | null;
   weddingDate: string | null;
-  theme: { primary?: string; accent?: string; headingFont?: string };
+  theme: WeddingTheme;
   status: string;
 }
 

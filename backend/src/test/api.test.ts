@@ -827,6 +827,84 @@ describe("profile rename (PATCH)", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Per-wedding theme customisation — the admin can set brandName, colours,
+// fonts and sizing knobs. PATCHes must merge with existing theme JSON, never
+// drop fields the client didn't send.
+describe("wedding theme", () => {
+  it("admin can set theme fields", async () => {
+    const r = await call("/admin/wedding", {
+      token: adminToken,
+      method: "PATCH",
+      body: {
+        theme: {
+          brandName: "QPIX FILMS",
+          primary: "#7c3aed",
+          headingFont: "Cormorant Garamond",
+          headingScale: "large",
+          thumbnailSize: "small",
+          heroHeight: "medium",
+        },
+      },
+    });
+    assert.equal(r.status, 200);
+    assert.equal(r.data.theme.brandName, "QPIX FILMS");
+    assert.equal(r.data.theme.primary, "#7c3aed");
+    assert.equal(r.data.theme.headingFont, "Cormorant Garamond");
+    assert.equal(r.data.theme.headingScale, "large");
+    assert.equal(r.data.theme.thumbnailSize, "small");
+    assert.equal(r.data.theme.heroHeight, "medium");
+  });
+
+  it("a partial PATCH merges instead of replacing", async () => {
+    // first PATCH sets primary; second PATCH sets accent only — primary must
+    // survive on the server.
+    await call("/admin/wedding", {
+      token: adminToken,
+      method: "PATCH",
+      body: { theme: { primary: "#aa0000" } },
+    });
+    const second = await call("/admin/wedding", {
+      token: adminToken,
+      method: "PATCH",
+      body: { theme: { accent: "#00aa00" } },
+    });
+    assert.equal(second.status, 200);
+    assert.equal(second.data.theme.primary, "#aa0000");
+    assert.equal(second.data.theme.accent, "#00aa00");
+  });
+
+  it("rejects a non-hex primary colour", async () => {
+    const r = await call("/admin/wedding", {
+      token: adminToken,
+      method: "PATCH",
+      body: { theme: { primary: "rebeccapurple" } },
+    });
+    assert.equal(r.status, 400);
+  });
+
+  it("rejects an unknown heading font", async () => {
+    const r = await call("/admin/wedding", {
+      token: adminToken,
+      method: "PATCH",
+      body: { theme: { headingFont: "Comic Sans MS" } },
+    });
+    assert.equal(r.status, 400);
+  });
+
+  it("theme is exposed on the public /wedding payload", async () => {
+    // The setup test above persists fields; here we just confirm the
+    // anonymous /wedding endpoint returns them.
+    const r = await call("/wedding");
+    assert.equal(r.status, 200);
+    assert.ok(r.data.theme, "wedding payload must include a theme object");
+    assert.ok(
+      typeof r.data.theme.brandName === "string" ||
+        r.data.theme.brandName === undefined,
+    );
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 describe("studio creation validation", () => {
   it("rejects a duplicate slug with 409", async () => {
     const r = await call("/studio/weddings", {

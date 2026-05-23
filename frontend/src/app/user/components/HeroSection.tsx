@@ -24,7 +24,13 @@ export function HeroSection({
   }, [heroMuted, hero]);
 
   return (
-    <div className="relative h-screen min-h-[600px]">
+    <div
+      className="relative"
+      style={{
+        height: "var(--hero-h, 100vh)",
+        minHeight: "var(--hero-min-h, 600px)",
+      }}
+    >
       <div className="absolute inset-0">
         {hero?.preview ? (
           <video
@@ -65,8 +71,12 @@ export function HeroSection({
               A Wedding Original
             </p>
             <h2
-              className="text-4xl md:text-6xl lg:text-[4.5rem] font-bold text-foreground leading-[1.05]"
-              style={{ fontFamily: "'Playfair Display', serif" }}
+              className="font-bold text-foreground leading-[1.05]"
+              style={{
+                fontFamily: "var(--font-heading)",
+                fontSize:
+                  "clamp(2.25rem, 7vw, calc(4.5rem * var(--heading-scale)))",
+              }}
             >
               {wedding.coupleNameA} <span className="text-accent">∞</span>{" "}
               {wedding.coupleNameB}

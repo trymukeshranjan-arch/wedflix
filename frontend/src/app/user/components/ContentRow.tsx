@@ -53,8 +53,12 @@ export function ContentRow({
   return (
     <div className="group/row relative py-2">
       <h3
-        className="text-lg md:text-xl font-semibold mb-3 px-4 md:px-12 text-foreground"
-        style={{ fontFamily: "'Playfair Display', serif" }}
+        className="font-semibold mb-3 px-4 md:px-12 text-foreground"
+        style={{
+          fontFamily: "var(--font-heading)",
+          fontSize:
+            "clamp(1.05rem, 2.2vw, calc(1.35rem * var(--heading-scale)))",
+        }}
       >
         {row.title}
       </h3>
@@ -84,7 +88,8 @@ export function ContentRow({
         {row.items.map((item) => (
           <div
             key={item.id}
-            className="min-w-[260px] sm:min-w-[290px] flex-shrink-0"
+            className="flex-shrink-0"
+            style={{ minWidth: "var(--card-min-w, 260px)" }}
           >
             <VideoCard
               item={item}

@@ -41,7 +41,28 @@ adminRoutes.get("/home", async (c) =>
   ok(c, await buildHome(c.get("wedding"), { includeDrafts: true })),
 );
 
-// Edit wedding-level fields (couple names, tagline).
+// Edit wedding-level fields (couple names, tagline, theme).
+const HEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+const sizeScale = z.enum(["small", "medium", "large"]);
+const themeSchema = z
+  .object({
+    brandName: z.string().min(1).max(60).optional(),
+    primary: z.string().regex(HEX).optional(),
+    accent: z.string().regex(HEX).optional(),
+    headingFont: z
+      .enum([
+        "Playfair Display",
+        "Cormorant Garamond",
+        "Inter",
+        "Merriweather",
+      ])
+      .optional(),
+    headingScale: sizeScale.optional(),
+    thumbnailSize: sizeScale.optional(),
+    heroHeight: sizeScale.optional(),
+  })
+  .strict();
+
 adminRoutes.patch("/wedding", async (c) => {
   const w = c.get("wedding");
   const body = await readJson(
@@ -50,11 +71,24 @@ adminRoutes.patch("/wedding", async (c) => {
       coupleNameA: z.string().min(1).max(120).optional(),
       coupleNameB: z.string().min(1).max(120).optional(),
       tagline: z.string().max(300).optional(),
+      theme: themeSchema.optional(),
     }),
   );
+
+  // Merge theme partial with whatever is already stored — never drop fields
+  // the client didn't send.
+  const nextTheme = body.theme
+    ? { ...(w.theme ?? {}), ...body.theme }
+    : undefined;
+
+  const { theme: _ignored, ...flatBody } = body;
   const [updated] = await db
     .update(weddings)
-    .set({ ...body, updatedAt: new Date() })
+    .set({
+      ...flatBody,
+      ...(nextTheme ? { theme: nextTheme } : {}),
+      updatedAt: new Date(),
+    })
     .where(eq(weddings.id, w.id))
     .returning();
   return ok(c, {
@@ -62,6 +96,7 @@ adminRoutes.patch("/wedding", async (c) => {
     coupleNameA: updated!.coupleNameA,
     coupleNameB: updated!.coupleNameB,
     tagline: updated!.tagline,
+    theme: updated!.theme,
   });
 });
 

@@ -39,6 +39,21 @@
   --sidebar-accent-foreground: #F5F5F5;
   --sidebar-border: rgba(255, 255, 255, 0.1);
   --sidebar-ring: #E50914;
+
+  /* Per-wedding theme variables — overridden at runtime by applyTheme().
+     Defaults match the platform's stock look. */
+  --font-heading: 'Playfair Display', serif;
+  --heading-scale: 1;       /* multiplier for h1/h2 sizes; 0.85 / 1 / 1.15 */
+  --hero-h: 100vh;          /* hero section height */
+  --hero-min-h: 600px;
+  --card-min-w: 260px;      /* min width of a content-row card on mobile */
+  --card-min-w-sm: 290px;   /* min width on >=sm breakpoints */
+}
+
+/* Bump card width slightly on sm+ screens. applyTheme() only sets the base
+   --card-min-w / --card-min-w-sm pair; this rule wires the breakpoint. */
+@media (min-width: 640px) {
+  :root { --card-min-w: var(--card-min-w-sm, 290px); }
 }
 
 .dark {

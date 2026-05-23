@@ -6,6 +6,7 @@ import {
   LogOut,
   ArrowLeft,
   Users,
+  Palette,
 } from "lucide-react";
 import { AnimatePresence } from "motion/react";
 import { api, ApiError } from "../api/client";
@@ -18,6 +19,8 @@ import { PortalStyles } from "../user/components/PortalStyles";
 import { ContentEditModal, type EditTarget } from "./ContentEditModal";
 import { WeddingInfoModal } from "./WeddingInfoModal";
 import { ProfilesModal } from "./ProfilesModal";
+import { ThemeModal } from "./ThemeModal";
+import { applyTheme, resolveTheme } from "../lib/theme";
 
 // The admin portal mirrors the user portal exactly — same hero, rows and
 // cards — and overlays Edit / Add / Delete controls on everything.
@@ -29,6 +32,7 @@ export function AdminPortal({ onBack }: { onBack?: () => void }) {
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
   const [weddingModal, setWeddingModal] = useState(false);
   const [profilesOpen, setProfilesOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
 
   const load = useCallback(() => {
     api<HomeData>("/admin/home")
@@ -41,6 +45,12 @@ export function AdminPortal({ onBack }: { onBack?: () => void }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Apply this wedding's theme to :root so the admin portal previews exactly
+  // what users will see.
+  useEffect(() => {
+    applyTheme(home?.wedding.theme);
+  }, [home?.wedding.theme]);
 
   useEffect(() => {
     document.body.style.overflow = activeVideo ? "hidden" : "";
@@ -70,7 +80,7 @@ export function AdminPortal({ onBack }: { onBack?: () => void }) {
       <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center gap-3 px-6 text-center">
         <h1
           className="text-3xl font-bold text-primary tracking-[0.15em]"
-          style={{ fontFamily: "'Playfair Display', serif" }}
+          style={{ fontFamily: "var(--font-heading)" }}
         >
           WEDFLIX
         </h1>
@@ -88,6 +98,7 @@ export function AdminPortal({ onBack }: { onBack?: () => void }) {
   }
 
   const { wedding, hero, rows } = home;
+  const brand = resolveTheme(wedding.theme).brandName;
   const btn =
     "flex items-center gap-1.5 text-sm rounded px-3 py-1.5 transition-colors";
 
@@ -119,6 +130,16 @@ export function AdminPortal({ onBack }: { onBack?: () => void }) {
       {profilesOpen && (
         <ProfilesModal onClose={() => setProfilesOpen(false)} />
       )}
+      {themeOpen && (
+        <ThemeModal
+          wedding={wedding}
+          onClose={() => setThemeOpen(false)}
+          onSaved={() => {
+            setThemeOpen(false);
+            load();
+          }}
+        />
+      )}
 
       {/* Admin bar */}
       <nav className="fixed top-0 left-0 right-0 z-50 px-4 md:px-8 py-3 bg-background/95 backdrop-blur-md border-b border-border">
@@ -126,9 +147,9 @@ export function AdminPortal({ onBack }: { onBack?: () => void }) {
           <div className="flex items-center gap-2.5">
             <h1
               className="text-xl md:text-2xl font-bold text-primary tracking-[0.15em]"
-              style={{ fontFamily: "'Playfair Display', serif" }}
+              style={{ fontFamily: "var(--font-heading)" }}
             >
-              WEDFLIX
+              {brand}
             </h1>
             <span className="text-[10px] font-bold bg-accent/15 text-accent px-2 py-0.5 rounded-full tracking-wider">
               ADMIN
@@ -165,6 +186,13 @@ export function AdminPortal({ onBack }: { onBack?: () => void }) {
             >
               <Pencil className="w-4 h-4" />
               <span className="hidden md:inline">Couple Info</span>
+            </button>
+            <button
+              onClick={() => setThemeOpen(true)}
+              className={`${btn} text-muted-foreground hover:text-foreground hover:bg-foreground/5`}
+            >
+              <Palette className="w-4 h-4" />
+              <span className="hidden md:inline">Theme</span>
             </button>
             <a
               href={`/w/${wedding.slug}`}
@@ -230,7 +258,7 @@ export function AdminPortal({ onBack }: { onBack?: () => void }) {
 
       <footer className="border-t border-border px-4 md:px-12 py-8">
         <p className="text-center text-xs text-muted-foreground/60">
-          WEDFLIX Admin — changes here go live on the user portal instantly.
+          {brand} Admin — changes here go live on the user portal instantly.
         </p>
       </footer>
 

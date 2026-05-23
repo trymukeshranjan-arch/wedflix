@@ -41,7 +41,7 @@ export function WhoIsWatching({
     <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6">
       <h1
         className="text-3xl md:text-5xl lg:text-6xl text-white font-light mb-10 md:mb-14 text-center"
-        style={{ fontFamily: "'Playfair Display', serif" }}
+        style={{ fontFamily: "var(--font-heading)" }}
       >
         Who&apos;s watching?
       </h1>

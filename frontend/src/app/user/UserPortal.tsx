@@ -9,6 +9,7 @@ import { ContentRow } from "./components/ContentRow";
 import { VideoPlayer } from "./components/VideoPlayer";
 import { SearchOverlay } from "./components/SearchOverlay";
 import { PortalStyles } from "./components/PortalStyles";
+import { applyTheme, resolveTheme } from "../lib/theme";
 
 export function UserPortal({
   profileName,
@@ -30,6 +31,12 @@ export function UserPortal({
         setError(e?.message ?? "Could not load this wedding"),
       );
   }, []);
+
+  // Apply per-wedding theme to :root — propagates through every component
+  // via the existing CSS variables.
+  useEffect(() => {
+    applyTheme(home?.wedding.theme);
+  }, [home?.wedding.theme]);
 
   useEffect(() => {
     const onScroll = () => setNavOpaque(window.scrollY > 60);
@@ -77,6 +84,7 @@ export function UserPortal({
 
   const { wedding, hero, rows } = home;
   const coupleTitle = `${wedding.coupleNameA} ∞ ${wedding.coupleNameB}`;
+  const brand = resolveTheme(wedding.theme).brandName;
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
@@ -112,9 +120,9 @@ export function UserPortal({
           <div className="flex items-center gap-8">
             <h1
               className="text-2xl md:text-3xl font-bold text-primary tracking-[0.15em]"
-              style={{ fontFamily: "'Playfair Display', serif" }}
+              style={{ fontFamily: "var(--font-heading)" }}
             >
-              WEDFLIX
+              {brand}
             </h1>
             <div className="hidden md:flex items-center gap-6 text-sm text-foreground/70">
               <a href="#" className="hover:text-foreground transition-colors">
@@ -176,9 +184,9 @@ export function UserPortal({
         <div className="max-w-7xl mx-auto text-center space-y-2">
           <h3
             className="text-2xl font-bold text-primary tracking-widest"
-            style={{ fontFamily: "'Playfair Display', serif" }}
+            style={{ fontFamily: "var(--font-heading)" }}
           >
-            WEDFLIX
+            {brand}
           </h3>
           <p className="text-sm text-muted-foreground">{coupleTitle}</p>
           <p className="text-xs text-muted-foreground/60 pt-4">

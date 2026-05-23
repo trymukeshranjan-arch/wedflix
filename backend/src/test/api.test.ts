@@ -539,3 +539,314 @@ describe("content visibility", () => {
     });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Permission boundary — an invited viewer must not slip into /admin/*.
+describe("admin permission boundary", () => {
+  let viewerToken = "";
+
+  before(async () => {
+    const inv = await call("/admin/invites", {
+      token: adminToken,
+      method: "POST",
+      body: { role: "family" },
+    });
+    const join = await call("/wedding/join", {
+      method: "POST",
+      body: { token: inv.data.token, name: "Boundary Test" },
+    });
+    viewerToken = join.data.accessToken;
+  });
+
+  it("viewer token is rejected by /admin/home", async () => {
+    const r = await call("/admin/home", { token: viewerToken });
+    assert.equal(r.status, 403);
+  });
+
+  it("viewer token cannot create content", async () => {
+    const r = await call("/admin/content", {
+      token: viewerToken,
+      method: "POST",
+      body: { type: "film", title: "viewer attempt" },
+    });
+    assert.equal(r.status, 403);
+  });
+
+  it("viewer token cannot start a multipart upload", async () => {
+    const r = await call("/admin/media/multipart/init", {
+      token: viewerToken,
+      method: "POST",
+      body: { filename: "x.mp4", contentType: "video/mp4" },
+    });
+    assert.equal(r.status, 403);
+  });
+
+  it("viewer token cannot edit the wedding tagline", async () => {
+    const r = await call("/admin/wedding", {
+      token: viewerToken,
+      method: "PATCH",
+      body: { tagline: "hijack" },
+    });
+    assert.equal(r.status, 403);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Multipart upload routes — the chunked-upload path the admin UI uses for
+// videos. Tests run with R2 unconfigured, so we exercise the local-dev
+// fallback plus all the validation and tenant-scoping guards. The actual
+// R2 happy path is verified by integration tests against the running service.
+describe("multipart upload routes", () => {
+  const FOREIGN_KEY =
+    "weddings/00000000-0000-0000-0000-000000000099/foo.mp4";
+
+  it("init requires auth", async () => {
+    const r = await call("/admin/media/multipart/init", {
+      method: "POST",
+      body: { filename: "a.mp4" },
+    });
+    assert.equal(r.status, 401);
+  });
+
+  it("init with R2 off returns the legacy-fallback flag", async () => {
+    const r = await call("/admin/media/multipart/init", {
+      token: adminToken,
+      method: "POST",
+      body: {
+        filename: "clip.mp4",
+        contentType: "video/mp4",
+        sizeBytes: 10,
+      },
+    });
+    assert.equal(r.status, 200);
+    assert.equal(r.data.direct, false);
+  });
+
+  it("init rejects a missing filename", async () => {
+    const r = await call("/admin/media/multipart/init", {
+      token: adminToken,
+      method: "POST",
+      body: { contentType: "video/mp4" },
+    });
+    assert.equal(r.status, 400);
+  });
+
+  it("part rejects a key from a different wedding", async () => {
+    const url = `/api/v1/admin/media/multipart/part?key=${encodeURIComponent(
+      FOREIGN_KEY,
+    )}&uploadId=abc&partNumber=1`;
+    const res = await app.request(url, {
+      method: "PUT",
+      headers: {
+        "X-Wedding-Slug": SLUG,
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: new Uint8Array([1, 2, 3]),
+    });
+    assert.equal(res.status, 400);
+  });
+
+  it("part rejects missing query params", async () => {
+    const res = await app.request("/api/v1/admin/media/multipart/part", {
+      method: "PUT",
+      headers: {
+        "X-Wedding-Slug": SLUG,
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: new Uint8Array([1]),
+    });
+    assert.equal(res.status, 400);
+  });
+
+  it("complete rejects a key from a different wedding", async () => {
+    const r = await call("/admin/media/multipart/complete", {
+      token: adminToken,
+      method: "POST",
+      body: {
+        key: FOREIGN_KEY,
+        uploadId: "abc",
+        parts: [{ partNumber: 1, etag: '"x"' }],
+      },
+    });
+    assert.equal(r.status, 400);
+  });
+
+  it("complete rejects an empty parts array", async () => {
+    const r = await call("/admin/media/multipart/complete", {
+      token: adminToken,
+      method: "POST",
+      body: { key: FOREIGN_KEY, uploadId: "abc", parts: [] },
+    });
+    assert.equal(r.status, 400);
+  });
+
+  it("abort silently ignores a key from a different wedding", async () => {
+    // A 200 with no R2 call — keeps a malicious client from probing other
+    // weddings' uploads via an error-vs-success oracle.
+    const r = await call("/admin/media/multipart/abort", {
+      token: adminToken,
+      method: "POST",
+      body: { key: FOREIGN_KEY, uploadId: "abc" },
+    });
+    assert.equal(r.status, 200);
+    assert.equal(r.data.aborted, true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Draft content must be admin-only — never leak to the public home/rows.
+describe("draft vs published visibility", () => {
+  let draftId = "";
+  const ROW = "Drafts QA Row";
+
+  it("admin can create a draft", async () => {
+    const r = await call("/admin/content", {
+      token: adminToken,
+      method: "POST",
+      body: {
+        type: "film",
+        title: "E2E Draft Clip",
+        collectionTitle: ROW,
+        status: "draft",
+      },
+    });
+    assert.equal(r.status, 201);
+    draftId = r.data.id;
+  });
+
+  it("draft does NOT appear in the public home", async () => {
+    const r = await call("/wedding/home");
+    const row = r.data.rows.find((x: any) => x.title === ROW);
+    if (row) {
+      assert.ok(
+        !row.items.some((i: any) => i.id === draftId),
+        "draft must not be listed in the public row",
+      );
+    }
+  });
+
+  it("draft DOES appear in the admin home", async () => {
+    const r = await call("/admin/home", { token: adminToken });
+    const row = r.data.rows.find((x: any) => x.title === ROW);
+    assert.ok(row, "admin home should include the drafts row");
+    assert.ok(
+      row.items.some((i: any) => i.id === draftId),
+      "admin must see the draft",
+    );
+  });
+
+  after(async () => {
+    if (draftId) {
+      await call(`/admin/content/${draftId}`, {
+        token: adminToken,
+        method: "DELETE",
+      });
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// setAsHero promotes a content item to the wedding's homepage hero.
+describe("setAsHero flow", () => {
+  let candidateId = "";
+  let originalHeroId: string | null = null;
+
+  before(async () => {
+    const home = await call("/wedding/home");
+    originalHeroId = home.data.hero?.id ?? null;
+  });
+
+  it("creating with setAsHero=true promotes the new item to hero", async () => {
+    const r = await call("/admin/content", {
+      token: adminToken,
+      method: "POST",
+      body: {
+        type: "film",
+        title: "E2E Hero Candidate",
+        status: "published",
+        setAsHero: true,
+      },
+    });
+    assert.equal(r.status, 201);
+    candidateId = r.data.id;
+    const home = await call("/wedding/home");
+    assert.equal(home.data.hero?.id, candidateId);
+  });
+
+  it("PATCH with setAsHero=true on a different item swaps the hero back", async () => {
+    if (!originalHeroId) return; // seed had no hero — skip
+    const r = await call(`/admin/content/${originalHeroId}`, {
+      token: adminToken,
+      method: "PATCH",
+      body: { setAsHero: true },
+    });
+    assert.equal(r.status, 200);
+    const home = await call("/wedding/home");
+    assert.equal(home.data.hero?.id, originalHeroId);
+  });
+
+  after(async () => {
+    if (candidateId) {
+      await call(`/admin/content/${candidateId}`, {
+        token: adminToken,
+        method: "DELETE",
+      });
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe("profile rename (PATCH)", () => {
+  it("admin can rename a profile", async () => {
+    const created = await call("/admin/profiles", {
+      token: adminToken,
+      method: "POST",
+      body: { name: "Rename Me" },
+    });
+    assert.equal(created.status, 201);
+    const renamed = await call(`/admin/profiles/${created.data.id}`, {
+      token: adminToken,
+      method: "PATCH",
+      body: { name: "Renamed" },
+    });
+    assert.equal(renamed.status, 200);
+    assert.equal(renamed.data.name, "Renamed");
+    await call(`/admin/profiles/${created.data.id}`, {
+      token: adminToken,
+      method: "DELETE",
+    });
+  });
+
+  it("PATCH on an unknown profile id → 404", async () => {
+    const r = await call(
+      "/admin/profiles/00000000-0000-0000-0000-000000000000",
+      { token: adminToken, method: "PATCH", body: { name: "Ghost" } },
+    );
+    assert.equal(r.status, 404);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe("studio creation validation", () => {
+  it("rejects a duplicate slug with 409", async () => {
+    const r = await call("/studio/weddings", {
+      token: adminToken,
+      method: "POST",
+      body: { coupleNameA: "Dup", coupleNameB: "Slug", slug: SLUG },
+    });
+    assert.equal(r.status, 409);
+  });
+
+  it("rejects a slug that breaks the URL-safe pattern", async () => {
+    const r = await call("/studio/weddings", {
+      token: adminToken,
+      method: "POST",
+      body: {
+        coupleNameA: "A",
+        coupleNameB: "B",
+        slug: "INVALID Slug!",
+      },
+    });
+    assert.equal(r.status, 400);
+  });
+});

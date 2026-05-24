@@ -11,9 +11,16 @@ import { SeasonsPage } from "./SeasonsPage";
 const profileKey = (slug: string) => `wedflix.profile.${slug}`;
 const introKey = (slug: string) => `wedflix.intro.${slug}`;
 
-// Wraps a single wedding: points the API at its slug, plays the cinematic
-// intro once per session, then shows the "Who's watching?" picker before
-// the portal.
+// Wraps a single wedding. The flow matches Netflix:
+//   1. "Who's watching?" picker — every visit until the intro has been
+//      played this session. Picking a profile counts as the user gesture
+//      that unlocks autoplay-with-sound for the intro.
+//   2. Intro video — plays once per session, immediately after the pick.
+//   3. Portal (home + nested routes).
+//
+// After the intro has played once this session, returning to the URL
+// (e.g. via "switch profile") goes straight to the picker → portal with
+// no intro replay.
 export function WeddingApp() {
   const { slug = "" } = useParams();
   // key forces a clean remount (and profile re-read) when the slug changes.
@@ -32,14 +39,15 @@ function WeddingShell({ slug }: { slug: string }) {
     }
   });
 
-  // Intro only plays once per session — skip the flicker for everyone after
-  // the first visit.
   const [introDone, setIntroDone] = useState(
     () => sessionStorage.getItem(introKey(slug)) === "done",
   );
+  // Set true between "user picked profile" and "intro finished" — that's
+  // when the intro should be on screen, fed by a fresh user gesture.
+  const [introPending, setIntroPending] = useState(false);
 
-  // Fetch the wedding payload early so the intro can use the right brand
-  // colour and name. /wedding is light (no content rows) so this is cheap.
+  // Fetch the wedding payload once so the picker and intro both have the
+  // right brand colour and name to work with.
   const [wedding, setWedding] = useState<WeddingInfo | null>(null);
   useEffect(() => {
     api<WeddingInfo>("/wedding")
@@ -47,28 +55,42 @@ function WeddingShell({ slug }: { slug: string }) {
       .catch(() => setWedding(null));
   }, [slug]);
 
-  // Apply theme as soon as we know it — both the intro and every subsequent
-  // screen render with the right colours/font.
   useEffect(() => {
     if (wedding) applyTheme(wedding.theme);
   }, [wedding]);
 
-  if (!introDone) {
-    // Hold a black screen while wedding loads (usually <300 ms) so the
-    // intro animates in the right brand colour, not the default red.
-    if (!wedding) return <div className="fixed inset-0 bg-black" />;
-    const brand = resolveTheme(wedding.theme).brandName;
+  const brand = wedding ? resolveTheme(wedding.theme).brandName : "WEDFLIX";
+
+  // 1. Intro hasn't played this session yet — always show the picker first.
+  //    Picking a profile sets `introPending` so the intro renders next.
+  if (!introDone && !introPending) {
+    return (
+      <WhoIsWatching
+        onPick={(p) => {
+          localStorage.setItem(profileKey(slug), JSON.stringify(p));
+          setProfile(p);
+          setIntroPending(true);
+        }}
+      />
+    );
+  }
+
+  // 2. Profile just picked — play the intro with sound (gesture is fresh).
+  if (introPending) {
     return (
       <IntroAnimation
         brandName={brand}
         onDone={() => {
           sessionStorage.setItem(introKey(slug), "done");
           setIntroDone(true);
+          setIntroPending(false);
         }}
       />
     );
   }
 
+  // 3. Intro already played this session — if the user switched profiles,
+  //    show the picker again (no intro). Otherwise jump to the portal.
   if (!profile) {
     return (
       <WhoIsWatching
@@ -85,8 +107,6 @@ function WeddingShell({ slug }: { slug: string }) {
     setProfile(null);
   };
 
-  // Once intro + profile are out of the way, route between the home portal
-  // and per-feature pages (just /seasons today; more can hang off here).
   return (
     <Routes>
       <Route

@@ -37,10 +37,23 @@ mediaRoutes.get("/:assetId", async (c) => {
 
   if (asset.providerId) {
     if (isR2Configured()) {
-      const upstream = await getObject(
-        asset.providerId,
-        c.req.header("range"),
+      // Cap any single response at 8 MiB so we never try to stream a
+      // multi-GB file through Cloud Run in one go — Cloud Run errors on
+      // very large responses. The browser fetches the rest via subsequent
+      // Range requests, which is the normal pattern for <video>.
+      const MAX_CHUNK = 8 * 1024 * 1024;
+      const rawRange = c.req.header("range") ?? "";
+      const m = rawRange.match(/^bytes=(\d+)-(\d*)$/);
+      const start = m ? parseInt(m[1]!, 10) : 0;
+      const requestedEnd = m && m[2] ? parseInt(m[2], 10) : Infinity;
+      const cappedEnd = Math.min(
+        requestedEnd,
+        start + MAX_CHUNK - 1,
       );
+      // Always send a bounded Range upstream — even if the client didn't
+      // send one — so R2 streams only the slice we want.
+      const upstreamRange = `bytes=${start}-${cappedEnd}`;
+      const upstream = await getObject(asset.providerId, upstreamRange);
       if (!upstream.ok && upstream.status !== 206) {
         throw errors.notFound("Media not found");
       }

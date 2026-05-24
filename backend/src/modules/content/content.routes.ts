@@ -11,8 +11,6 @@ import { env } from "../../config/env";
 import { errors } from "../../lib/errors";
 import { ok } from "../../lib/http";
 import { canView, findMembership } from "../../lib/access";
-import { isR2Configured } from "../../services/storage";
-import { presignGetUrl } from "../../services/r2";
 import { toContentDto } from "./serialize";
 import type { AppEnv } from "../../lib/context";
 
@@ -111,13 +109,17 @@ contentRoutes.get("/:id/playback", async (c) => {
   if (!asset || asset.status !== "ready") {
     throw errors.badRequest("This video is still processing");
   }
-  // Send the browser straight to R2 — avoids a Cloud Run hop per video, so
-  // playback starts as soon as R2 responds.
-  const src =
-    asset.providerId && isR2Configured()
-      ? await presignGetUrl(asset.providerId)
-      : `/api/v1/media/${asset.id}`;
-  return ok(c, { src, kind: "mp4", expiresIn: null });
+  // Route through /api/v1/media/:id — the media route 302-redirects to a
+  // freshly-signed R2 URL. We can't hand the browser the direct R2 URL
+  // because Chrome's <video> element does a HEAD probe on a cross-origin
+  // src, and R2 returns 503 for HEAD via a presigned URL. Going via
+  // /media/:id, the browser's Range GET is preserved across the 302 and the
+  // HEAD probe never fires.
+  return ok(c, {
+    src: `/api/v1/media/${asset.id}`,
+    kind: "mp4",
+    expiresIn: null,
+  });
 });
 
 // Signed URL for downloading the original file (download permission only).
@@ -136,9 +138,10 @@ contentRoutes.get("/:id/download", async (c) => {
     throw errors.badRequest("Original is not available yet");
   }
 
-  const downloadUrl =
-    asset.providerId && isR2Configured()
-      ? await presignGetUrl(asset.providerId)
-      : `/api/v1/media/${asset.id}`;
-  return ok(c, { downloadUrl, expiresIn: null });
+  // Same routing rationale as /playback above — go through /media/:id so
+  // the browser flow works uniformly.
+  return ok(c, {
+    downloadUrl: `/api/v1/media/${asset.id}`,
+    expiresIn: null,
+  });
 });

@@ -905,6 +905,150 @@ describe("wedding theme", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Seasons — admins group episodes into seasons; deleting a season un-assigns
+// its episodes (via FK ON DELETE SET NULL) instead of cascading.
+describe("seasons admin CRUD", () => {
+  let seasonId = "";
+
+  it("admin can create a season", async () => {
+    const r = await call("/admin/seasons", {
+      token: adminToken,
+      method: "POST",
+      body: { number: 99, title: "QA Season", description: "for tests" },
+    });
+    assert.equal(r.status, 201);
+    assert.equal(r.data.title, "QA Season");
+    seasonId = r.data.id;
+  });
+
+  it("admin can rename a season via PATCH", async () => {
+    const r = await call(`/admin/seasons/${seasonId}`, {
+      token: adminToken,
+      method: "PATCH",
+      body: { title: "QA Season Renamed" },
+    });
+    assert.equal(r.status, 200);
+    assert.equal(r.data.title, "QA Season Renamed");
+  });
+
+  it("PATCH on an unknown season id → 404", async () => {
+    const r = await call(
+      "/admin/seasons/00000000-0000-0000-0000-000000000000",
+      { token: adminToken, method: "PATCH", body: { title: "ghost" } },
+    );
+    assert.equal(r.status, 404);
+  });
+
+  it("assigning then unassigning an episode preserves the content row", async () => {
+    // Create a content item, assign it to the season, then unassign with null.
+    const created = await call("/admin/content", {
+      token: adminToken,
+      method: "POST",
+      body: { type: "episode", title: "Season Test Clip", status: "published" },
+    });
+    const id = created.data.id;
+    const assign = await call(`/admin/content/${id}`, {
+      token: adminToken,
+      method: "PATCH",
+      body: { seasonId },
+    });
+    assert.equal(assign.status, 200);
+    assert.equal(assign.data.seasonId, seasonId);
+
+    const unassign = await call(`/admin/content/${id}`, {
+      token: adminToken,
+      method: "PATCH",
+      body: { seasonId: null },
+    });
+    assert.equal(unassign.status, 200);
+    assert.equal(unassign.data.seasonId, null);
+
+    await call(`/admin/content/${id}`, {
+      token: adminToken,
+      method: "DELETE",
+    });
+  });
+
+  it("deleting a season un-assigns episodes instead of dropping them", async () => {
+    // Make an episode bound to the season, delete the season, episode must
+    // survive with seasonId=null.
+    const ep = await call("/admin/content", {
+      token: adminToken,
+      method: "POST",
+      body: {
+        type: "episode",
+        title: "Episode Survives",
+        seasonId,
+        status: "published",
+      },
+    });
+    const epId = ep.data.id;
+
+    const del = await call(`/admin/seasons/${seasonId}`, {
+      token: adminToken,
+      method: "DELETE",
+    });
+    assert.equal(del.status, 200);
+
+    // Episode still exists in the public detail endpoint.
+    const after = await call(`/content/${epId}`);
+    assert.equal(after.status, 200);
+    assert.equal(after.data.seasonId, null);
+
+    await call(`/admin/content/${epId}`, {
+      token: adminToken,
+      method: "DELETE",
+    });
+  });
+
+  it("DELETE on an unknown season id → 404", async () => {
+    const r = await call(
+      "/admin/seasons/00000000-0000-0000-0000-000000000000",
+      { token: adminToken, method: "DELETE" },
+    );
+    assert.equal(r.status, 404);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('"Starring" field on the wedding', () => {
+  it("PATCH /admin/wedding sets and clears the starring line", async () => {
+    const set = await call("/admin/wedding", {
+      token: adminToken,
+      method: "PATCH",
+      body: { starring: "Bride · Groom · Families · Friends" },
+    });
+    assert.equal(set.status, 200);
+    assert.equal(set.data.starring, "Bride · Groom · Families · Friends");
+
+    const clear = await call("/admin/wedding", {
+      token: adminToken,
+      method: "PATCH",
+      body: { starring: null },
+    });
+    assert.equal(clear.status, 200);
+    assert.equal(clear.data.starring, null);
+  });
+
+  it("the public /wedding payload exposes starring", async () => {
+    await call("/admin/wedding", {
+      token: adminToken,
+      method: "PATCH",
+      body: { starring: "Test Cast" },
+    });
+    const pub = await call("/wedding");
+    assert.equal(pub.status, 200);
+    assert.equal(pub.data.starring, "Test Cast");
+    // Reset.
+    await call("/admin/wedding", {
+      token: adminToken,
+      method: "PATCH",
+      body: { starring: null },
+    });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 describe("studio creation validation", () => {
   it("rejects a duplicate slug with 409", async () => {
     const r = await call("/studio/weddings", {

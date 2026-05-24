@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   X,
   UploadCloud,
@@ -125,6 +125,17 @@ export function ContentEditModal({
   const [durationSeconds, setDurationSeconds] = useState<number | null>(
     item?.durationSeconds ?? null,
   );
+  // "" means "no season". seasonId state holds the season UUID or "".
+  const [seasonId, setSeasonId] = useState<string>(item?.seasonId ?? "");
+  const [seasonList, setSeasonList] = useState<
+    { id: string; number: number; title: string }[]
+  >([]);
+
+  useEffect(() => {
+    api<{ id: string; number: number; title: string }[]>("/admin/seasons")
+      .then(setSeasonList)
+      .catch(() => setSeasonList([]));
+  }, []);
 
   const [videoStatus, setVideoStatus] = useState<UploadState>(
     isEdit ? "done" : "idle",
@@ -186,6 +197,8 @@ export function ContentEditModal({
       status,
       collectionTitle: section.trim() || undefined,
       setAsHero: setAsHero || undefined,
+      // Empty string in the select = "no season" → send null to clear.
+      seasonId: seasonId || null,
       tags: tags
         .split(",")
         .map((t) => t.trim())
@@ -391,6 +404,28 @@ export function ContentEditModal({
                 <option value="draft">Draft</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className={labelCls}>Season</label>
+            <select
+              className={field}
+              value={seasonId}
+              onChange={(e) => setSeasonId(e.target.value)}
+            >
+              <option value="">(no season)</option>
+              {seasonList.map((s) => (
+                <option key={s.id} value={s.id}>
+                  Season {s.number} — {s.title}
+                </option>
+              ))}
+            </select>
+            {seasonList.length === 0 && (
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                No seasons yet. Create one from the Seasons button in the
+                admin nav.
+              </p>
+            )}
           </div>
 
           <div>

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router";
+import { useParams, Routes, Route } from "react-router";
 import { api, setWeddingSlug } from "../api/client";
 import type { WeddingInfo } from "../api/types";
 import { applyTheme, resolveTheme } from "../lib/theme";
 import { IntroAnimation } from "./IntroAnimation";
 import { WhoIsWatching, type Profile } from "./WhoIsWatching";
 import { UserPortal } from "./UserPortal";
+import { SeasonsPage } from "./SeasonsPage";
 
 const profileKey = (slug: string) => `wedflix.profile.${slug}`;
 const introKey = (slug: string) => `wedflix.intro.${slug}`;
@@ -79,13 +80,27 @@ function WeddingShell({ slug }: { slug: string }) {
     );
   }
 
+  const onSwitch = () => {
+    localStorage.removeItem(profileKey(slug));
+    setProfile(null);
+  };
+
+  // Once intro + profile are out of the way, route between the home portal
+  // and per-feature pages (just /seasons today; more can hang off here).
   return (
-    <UserPortal
-      profileName={profile.name}
-      onSwitchProfile={() => {
-        localStorage.removeItem(profileKey(slug));
-        setProfile(null);
-      }}
-    />
+    <Routes>
+      <Route
+        index
+        element={
+          <UserPortal profileName={profile.name} onSwitchProfile={onSwitch} />
+        }
+      />
+      <Route
+        path="seasons"
+        element={
+          <SeasonsPage profileName={profile.name} onSwitchProfile={onSwitch} />
+        }
+      />
+    </Routes>
   );
 }

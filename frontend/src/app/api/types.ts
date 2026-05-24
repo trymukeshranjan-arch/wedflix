@@ -26,6 +26,7 @@ export interface WeddingInfo {
   coupleNameA: string;
   coupleNameB: string;
   tagline: string | null;
+  starring: string | null;
   weddingDate: string | null;
   theme: WeddingTheme;
   status: string;

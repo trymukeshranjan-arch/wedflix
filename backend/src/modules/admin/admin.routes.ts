@@ -71,6 +71,8 @@ adminRoutes.patch("/wedding", async (c) => {
       coupleNameA: z.string().min(1).max(120).optional(),
       coupleNameB: z.string().min(1).max(120).optional(),
       tagline: z.string().max(300).optional(),
+      // null clears the field; empty string is rejected.
+      starring: z.string().min(1).max(300).nullable().optional(),
       theme: themeSchema.optional(),
     }),
   );
@@ -96,6 +98,7 @@ adminRoutes.patch("/wedding", async (c) => {
     coupleNameA: updated!.coupleNameA,
     coupleNameB: updated!.coupleNameB,
     tagline: updated!.tagline,
+    starring: updated!.starring,
     theme: updated!.theme,
   });
 });
@@ -254,7 +257,8 @@ const contentColumns = z.object({
   title: z.string().min(1).max(200),
   subtitle: z.string().max(300).optional(),
   description: z.string().max(5000).optional(),
-  seasonId: z.string().uuid().optional(),
+  // Nullable so admins can unassign a content item from its season.
+  seasonId: z.string().uuid().nullable().optional(),
   primaryAssetId: z.string().uuid().optional(),
   episodeNumber: z.number().int().optional(),
   durationSeconds: z.number().int().min(0).optional(),
@@ -448,6 +452,42 @@ adminRoutes.post("/seasons", async (c) => {
     .values({ weddingId: w.id, ...body })
     .returning();
   return created(c, row);
+});
+
+adminRoutes.patch("/seasons/:id", async (c) => {
+  const w = c.get("wedding");
+  const id = c.req.param("id");
+  const body = await readJson(
+    c,
+    z
+      .object({
+        number: z.number().int().min(1),
+        title: z.string().min(1).max(120),
+        description: z.string().max(2000).nullable(),
+      })
+      .partial(),
+  );
+  const [row] = await db
+    .update(seasons)
+    .set(body)
+    .where(and(eq(seasons.id, id), eq(seasons.weddingId, w.id)))
+    .returning();
+  if (!row) throw errors.notFound("Season not found");
+  return ok(c, row);
+});
+
+// Deleting a season just removes the grouping — the season FK on
+// content_items is ON DELETE SET NULL, so episodes return to the regular
+// home rows. Caller should confirm with the user first.
+adminRoutes.delete("/seasons/:id", async (c) => {
+  const w = c.get("wedding");
+  const id = c.req.param("id");
+  const deleted = await db
+    .delete(seasons)
+    .where(and(eq(seasons.id, id), eq(seasons.weddingId, w.id)))
+    .returning({ id: seasons.id });
+  if (!deleted.length) throw errors.notFound("Season not found");
+  return ok(c, { deleted: true });
 });
 
 // ── Collections (homepage rows) ──────────────────────────────────────────────

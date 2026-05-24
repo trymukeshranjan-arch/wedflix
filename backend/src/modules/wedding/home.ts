@@ -17,6 +17,7 @@ export function publicWedding(w: Wedding) {
     coupleNameA: w.coupleNameA,
     coupleNameB: w.coupleNameB,
     tagline: w.tagline,
+    starring: w.starring,
     weddingDate: w.weddingDate?.toISOString() ?? null,
     theme: w.theme,
     status: w.status,

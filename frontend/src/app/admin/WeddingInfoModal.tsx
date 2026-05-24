@@ -15,6 +15,7 @@ export function WeddingInfoModal({
   const [coupleNameA, setA] = useState(wedding.coupleNameA);
   const [coupleNameB, setB] = useState(wedding.coupleNameB);
   const [tagline, setTagline] = useState(wedding.tagline ?? "");
+  const [starring, setStarring] = useState(wedding.starring ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,6 +29,8 @@ export function WeddingInfoModal({
           coupleNameA: coupleNameA.trim(),
           coupleNameB: coupleNameB.trim(),
           tagline: tagline.trim() || undefined,
+          // null explicitly clears the starring field on the server.
+          starring: starring.trim() ? starring.trim() : null,
         },
       });
       onSaved();
@@ -81,6 +84,19 @@ export function WeddingInfoModal({
               onChange={(e) => setTagline(e.target.value)}
               placeholder="A Cinematic Wedding Journey · 2024"
             />
+          </div>
+          <div>
+            <label className={labelCls}>Starring</label>
+            <input
+              className={field}
+              value={starring}
+              onChange={(e) => setStarring(e.target.value)}
+              placeholder="Bride · Groom · Families · Friends"
+              maxLength={300}
+            />
+            <p className="text-xs text-muted-foreground/70 mt-1">
+              Cast line shown on the Seasons page. Leave blank to hide.
+            </p>
           </div>
           {error && (
             <p className="text-sm text-primary bg-primary/10 border border-primary/30 rounded px-3 py-2">

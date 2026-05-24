@@ -93,6 +93,9 @@ export const weddings = pgTable(
     coupleNameA: text("couple_name_a").notNull(),
     coupleNameB: text("couple_name_b").notNull(),
     tagline: text("tagline"),
+    // Optional "Starring:" line shown on the Seasons title page —
+    // e.g. "Bride · Groom · Families · Friends".
+    starring: text("starring"),
     weddingDate: timestamp("wedding_date", { withTimezone: true }),
     // Points at a content_items row. No DB-level FK to avoid a circular
     // table dependency — enforced in the application layer.

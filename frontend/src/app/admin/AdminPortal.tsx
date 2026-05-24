@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Users,
   Palette,
+  Layers,
 } from "lucide-react";
 import { AnimatePresence } from "motion/react";
 import { api, ApiError } from "../api/client";
@@ -20,6 +21,7 @@ import { ContentEditModal, type EditTarget } from "./ContentEditModal";
 import { WeddingInfoModal } from "./WeddingInfoModal";
 import { ProfilesModal } from "./ProfilesModal";
 import { ThemeModal } from "./ThemeModal";
+import { SeasonsModal } from "./SeasonsModal";
 import { applyTheme, resolveTheme } from "../lib/theme";
 
 // The admin portal mirrors the user portal exactly — same hero, rows and
@@ -33,6 +35,7 @@ export function AdminPortal({ onBack }: { onBack?: () => void }) {
   const [weddingModal, setWeddingModal] = useState(false);
   const [profilesOpen, setProfilesOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
+  const [seasonsOpen, setSeasonsOpen] = useState(false);
 
   const load = useCallback(() => {
     api<HomeData>("/admin/home")
@@ -140,6 +143,9 @@ export function AdminPortal({ onBack }: { onBack?: () => void }) {
           }}
         />
       )}
+      {seasonsOpen && (
+        <SeasonsModal onClose={() => setSeasonsOpen(false)} />
+      )}
 
       {/* Admin bar */}
       <nav className="fixed top-0 left-0 right-0 z-50 px-4 md:px-8 py-3 bg-background/95 backdrop-blur-md border-b border-border">
@@ -179,6 +185,13 @@ export function AdminPortal({ onBack }: { onBack?: () => void }) {
             >
               <Users className="w-4 h-4" />
               <span className="hidden md:inline">Profiles</span>
+            </button>
+            <button
+              onClick={() => setSeasonsOpen(true)}
+              className={`${btn} text-muted-foreground hover:text-foreground hover:bg-foreground/5`}
+            >
+              <Layers className="w-4 h-4" />
+              <span className="hidden md:inline">Seasons</span>
             </button>
             <button
               onClick={() => setWeddingModal(true)}

@@ -128,9 +128,12 @@ export function UserPortal({
               <a href="#" className="hover:text-foreground transition-colors">
                 Home
               </a>
-              <a href="#" className="hover:text-foreground transition-colors">
+              <Link
+                to={`/w/${wedding.slug}/seasons`}
+                className="hover:text-foreground transition-colors"
+              >
                 Seasons
-              </a>
+              </Link>
               <a href="#" className="hover:text-foreground transition-colors">
                 Films
               </a>

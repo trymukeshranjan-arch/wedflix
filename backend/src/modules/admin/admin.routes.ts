@@ -17,6 +17,7 @@ import { errors } from "../../lib/errors";
 import { ok, created } from "../../lib/http";
 import { readJson } from "../../lib/validate";
 import { requirePermission } from "../../middleware/authorize";
+import { hashPassword } from "../../services/auth";
 import { defaultPermissions } from "../../lib/permissions";
 import { hashToken, randomToken } from "../../lib/tokens";
 import { saveMedia, mediaKey, isR2Configured } from "../../services/storage";
@@ -502,11 +503,29 @@ adminRoutes.get("/collections", async (c) => {
 });
 
 // ── Profiles ("Who's watching") ──────────────────────────────────────────────
+// `pin` is a 4-digit numeric code; null clears the lock. It's hashed before
+// storage and never sent back to any client.
 const profileSchema = z.object({
   name: z.string().min(1).max(80),
   avatarUrl: z.string().optional(),
   sortOrder: z.number().int().optional(),
+  pin: z
+    .string()
+    .regex(/^\d{4}$/, "PIN must be 4 digits")
+    .nullable()
+    .optional(),
 });
+
+// Strip the hash; expose only whether a lock is set.
+function profileDto(p: typeof profiles.$inferSelect) {
+  return {
+    id: p.id,
+    name: p.name,
+    avatarUrl: p.avatarUrl,
+    sortOrder: p.sortOrder,
+    hasPin: Boolean(p.pinHash),
+  };
+}
 
 adminRoutes.get("/profiles", async (c) => {
   const w = c.get("wedding");
@@ -515,7 +534,7 @@ adminRoutes.get("/profiles", async (c) => {
     .from(profiles)
     .where(eq(profiles.weddingId, w.id))
     .orderBy(asc(profiles.sortOrder));
-  return ok(c, rows);
+  return ok(c, rows.map(profileDto));
 });
 
 adminRoutes.post("/profiles", async (c) => {
@@ -528,22 +547,28 @@ adminRoutes.post("/profiles", async (c) => {
       name: body.name,
       avatarUrl: body.avatarUrl,
       sortOrder: body.sortOrder ?? 0,
+      pinHash: body.pin ? hashPassword(body.pin) : null,
     })
     .returning();
-  return created(c, row);
+  return created(c, profileDto(row!));
 });
 
 adminRoutes.patch("/profiles/:id", async (c) => {
   const w = c.get("wedding");
   const id = c.req.param("id");
-  const body = await readJson(c, profileSchema.partial());
+  const { pin, ...rest } = await readJson(c, profileSchema.partial());
+  // pin === undefined → leave the lock untouched.
+  // pin === null      → remove the lock.
+  // pin === "1234"    → set/replace the lock.
+  const pinUpdate =
+    pin === undefined ? {} : { pinHash: pin ? hashPassword(pin) : null };
   const [row] = await db
     .update(profiles)
-    .set(body)
+    .set({ ...rest, ...pinUpdate })
     .where(and(eq(profiles.id, id), eq(profiles.weddingId, w.id)))
     .returning();
   if (!row) throw errors.notFound("Profile not found");
-  return ok(c, row);
+  return ok(c, profileDto(row));
 });
 
 adminRoutes.delete("/profiles/:id", async (c) => {

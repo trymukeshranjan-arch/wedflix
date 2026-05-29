@@ -17,7 +17,7 @@ import { ok } from "../../lib/http";
 import { readJson } from "../../lib/validate";
 import { hashToken } from "../../lib/tokens";
 import { findMembership } from "../../lib/access";
-import { signSession } from "../../services/auth";
+import { signSession, verifyPassword } from "../../services/auth";
 import { toContentDto } from "../content/serialize";
 import { buildHome, publicWedding } from "./home";
 import type { AppEnv, User } from "../../lib/context";
@@ -32,7 +32,8 @@ weddingRoutes.get("/home", async (c) =>
   ok(c, await buildHome(c.get("wedding"), { includeDrafts: false })),
 );
 
-// "Who's watching" profiles for this wedding.
+// "Who's watching" profiles for this wedding. `hasPin` tells the client to
+// prompt for a PIN before entering; the hash itself is never sent.
 weddingRoutes.get("/profiles", async (c) => {
   const w = c.get("wedding");
   const rows = await db
@@ -42,8 +43,33 @@ weddingRoutes.get("/profiles", async (c) => {
     .orderBy(asc(profiles.sortOrder));
   return ok(
     c,
-    rows.map((p) => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl })),
+    rows.map((p) => ({
+      id: p.id,
+      name: p.name,
+      avatarUrl: p.avatarUrl,
+      hasPin: Boolean(p.pinHash),
+    })),
   );
+});
+
+// Verify a profile's PIN. Returns { ok: true } on success, 403 otherwise.
+// Profiles without a PIN always pass (defensive — the client shouldn't ask).
+weddingRoutes.post("/profiles/:id/verify-pin", async (c) => {
+  const w = c.get("wedding");
+  const id = c.req.param("id");
+  const { pin } = await readJson(
+    c,
+    z.object({ pin: z.string().min(1).max(12) }),
+  );
+  const profile = await db.query.profiles.findFirst({
+    where: and(eq(profiles.id, id), eq(profiles.weddingId, w.id)),
+  });
+  if (!profile) throw errors.notFound("Profile not found");
+  if (!profile.pinHash) return ok(c, { ok: true });
+  if (!verifyPassword(pin, profile.pinHash)) {
+    throw errors.forbidden("Incorrect PIN");
+  }
+  return ok(c, { ok: true });
 });
 
 // Seasons with their episodes.

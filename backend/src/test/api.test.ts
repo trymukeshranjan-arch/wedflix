@@ -485,6 +485,103 @@ describe("profiles — who's watching", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Profile PIN lock — admins set a 4-digit PIN; viewers must enter it to open
+// the profile. The hash is never exposed; only a hasPin flag is.
+describe("profile PIN lock", () => {
+  let pinnedId = "";
+
+  it("admin creates a profile with a PIN", async () => {
+    const r = await call("/admin/profiles", {
+      token: adminToken,
+      method: "POST",
+      body: { name: "Locked Profile", pin: "1234" },
+    });
+    assert.equal(r.status, 201);
+    assert.equal(r.data.hasPin, true);
+    // The hash must never be returned.
+    assert.equal(r.data.pinHash, undefined);
+    pinnedId = r.data.id;
+  });
+
+  it("public /profiles exposes hasPin but never the hash", async () => {
+    const r = await call("/wedding/profiles");
+    const p = r.data.find((x: any) => x.id === pinnedId);
+    assert.ok(p, "pinned profile should be listed");
+    assert.equal(p.hasPin, true);
+    assert.equal(p.pinHash, undefined);
+  });
+
+  it("verify-pin accepts the correct PIN", async () => {
+    const r = await call(`/wedding/profiles/${pinnedId}/verify-pin`, {
+      method: "POST",
+      body: { pin: "1234" },
+    });
+    assert.equal(r.status, 200);
+    assert.equal(r.data.ok, true);
+  });
+
+  it("verify-pin rejects a wrong PIN with 403", async () => {
+    const r = await call(`/wedding/profiles/${pinnedId}/verify-pin`, {
+      method: "POST",
+      body: { pin: "0000" },
+    });
+    assert.equal(r.status, 403);
+  });
+
+  it("admin can change the PIN", async () => {
+    await call(`/admin/profiles/${pinnedId}`, {
+      token: adminToken,
+      method: "PATCH",
+      body: { pin: "5678" },
+    });
+    const old = await call(`/wedding/profiles/${pinnedId}/verify-pin`, {
+      method: "POST",
+      body: { pin: "1234" },
+    });
+    assert.equal(old.status, 403);
+    const fresh = await call(`/wedding/profiles/${pinnedId}/verify-pin`, {
+      method: "POST",
+      body: { pin: "5678" },
+    });
+    assert.equal(fresh.status, 200);
+  });
+
+  it("admin can remove the PIN (pin: null)", async () => {
+    const r = await call(`/admin/profiles/${pinnedId}`, {
+      token: adminToken,
+      method: "PATCH",
+      body: { pin: null },
+    });
+    assert.equal(r.status, 200);
+    assert.equal(r.data.hasPin, false);
+    // With no PIN, verify-pin passes regardless.
+    const v = await call(`/wedding/profiles/${pinnedId}/verify-pin`, {
+      method: "POST",
+      body: { pin: "9999" },
+    });
+    assert.equal(v.status, 200);
+  });
+
+  it("rejects a non-4-digit PIN", async () => {
+    const r = await call("/admin/profiles", {
+      token: adminToken,
+      method: "POST",
+      body: { name: "Bad PIN", pin: "12" },
+    });
+    assert.equal(r.status, 400);
+  });
+
+  after(async () => {
+    if (pinnedId) {
+      await call(`/admin/profiles/${pinnedId}`, {
+        token: adminToken,
+        method: "DELETE",
+      });
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 describe("studio — multi-wedding", () => {
   it("rejects studio routes without auth", async () => {
     const r = await call("/studio/weddings");

@@ -196,6 +196,9 @@ export const profiles = pgTable(
     name: text("name").notNull(),
     avatarUrl: text("avatar_url"),
     sortOrder: integer("sort_order").notNull().default(0),
+    // Optional profile lock. scrypt hash of a numeric PIN; null = no lock.
+    // Never exposed to clients — only a `hasPin` boolean is.
+    pinHash: text("pin_hash"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

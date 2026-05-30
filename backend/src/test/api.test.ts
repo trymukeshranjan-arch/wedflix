@@ -19,6 +19,7 @@ interface CallOpts {
   token?: string;
   slug?: string | null;
   formData?: FormData;
+  profileId?: string;
 }
 
 // Drives the real Hono app in-process — no network, no running server.
@@ -26,6 +27,7 @@ async function call(path: string, opts: CallOpts = {}): Promise<CallResult> {
   const headers: Record<string, string> = {};
   if (opts.slug !== null) headers["X-Wedding-Slug"] = opts.slug ?? SLUG;
   if (opts.token) headers["Authorization"] = `Bearer ${opts.token}`;
+  if (opts.profileId) headers["X-Profile-Id"] = opts.profileId;
 
   let body: string | FormData | undefined;
   if (opts.formData) {
@@ -481,6 +483,143 @@ describe("profiles — who's watching", () => {
       method: "DELETE",
     });
     assert.equal(del.status, 200);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Per-profile content visibility — items with a non-empty visibleProfileIds
+// only appear in /wedding/home and /wedding/seasons when X-Profile-Id
+// matches one of the listed profiles.
+describe("per-profile content visibility", () => {
+  let profileA = "";
+  let profileB = "";
+  let openItemId = "";
+  let restrictedItemId = "";
+
+  before(async () => {
+    const a = await call("/admin/profiles", {
+      token: adminToken,
+      method: "POST",
+      body: { name: "Visibility A" },
+    });
+    profileA = a.data.id;
+    const b = await call("/admin/profiles", {
+      token: adminToken,
+      method: "POST",
+      body: { name: "Visibility B" },
+    });
+    profileB = b.data.id;
+
+    const open = await call("/admin/content", {
+      token: adminToken,
+      method: "POST",
+      body: {
+        type: "film",
+        title: "Open To Everyone",
+        collectionTitle: "Visibility QA",
+        status: "published",
+      },
+    });
+    openItemId = open.data.id;
+    assert.deepEqual(open.data.visibleProfileIds, []);
+
+    const restricted = await call("/admin/content", {
+      token: adminToken,
+      method: "POST",
+      body: {
+        type: "film",
+        title: "Only For Profile A",
+        collectionTitle: "Visibility QA",
+        status: "published",
+        visibleProfileIds: [profileA],
+      },
+    });
+    restrictedItemId = restricted.data.id;
+    assert.deepEqual(restricted.data.visibleProfileIds, [profileA]);
+  });
+
+  const itemsOnHome = async (profileId?: string) => {
+    const r = await call("/wedding/home", { profileId });
+    const row = r.data.rows.find((x: any) => x.title === "Visibility QA");
+    return (row?.items ?? []).map((i: any) => i.title);
+  };
+
+  it("public home with no profile header → only the open item", async () => {
+    const titles = await itemsOnHome();
+    assert.ok(titles.includes("Open To Everyone"));
+    assert.ok(!titles.includes("Only For Profile A"));
+  });
+
+  it("public home with the matching profile → both items", async () => {
+    const titles = await itemsOnHome(profileA);
+    assert.ok(titles.includes("Open To Everyone"));
+    assert.ok(titles.includes("Only For Profile A"));
+  });
+
+  it("public home with a non-matching profile → restricted item is hidden", async () => {
+    const titles = await itemsOnHome(profileB);
+    assert.ok(titles.includes("Open To Everyone"));
+    assert.ok(
+      !titles.includes("Only For Profile A"),
+      "profile B must not see profile A's content",
+    );
+  });
+
+  it("admin /admin/home always returns everything regardless of profile filter", async () => {
+    const r = await call("/admin/home", { token: adminToken });
+    const row = r.data.rows.find((x: any) => x.title === "Visibility QA");
+    const titles = (row?.items ?? []).map((i: any) => i.title);
+    assert.ok(titles.includes("Open To Everyone"));
+    assert.ok(titles.includes("Only For Profile A"));
+  });
+
+  it("admin can change the visibility list (PATCH)", async () => {
+    // Move the restricted item to be visible to profile B as well.
+    const r = await call(`/admin/content/${restrictedItemId}`, {
+      token: adminToken,
+      method: "PATCH",
+      body: { visibleProfileIds: [profileA, profileB] },
+    });
+    assert.equal(r.status, 200);
+    assert.deepEqual(
+      [...r.data.visibleProfileIds].sort(),
+      [profileA, profileB].sort(),
+    );
+    // Profile B can now see it.
+    const titles = await itemsOnHome(profileB);
+    assert.ok(titles.includes("Only For Profile A"));
+  });
+
+  it("admin can clear the visibility list (PATCH with [])", async () => {
+    const r = await call(`/admin/content/${restrictedItemId}`, {
+      token: adminToken,
+      method: "PATCH",
+      body: { visibleProfileIds: [] },
+    });
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.data.visibleProfileIds, []);
+    // Now an anonymous (no profile header) viewer sees it again.
+    const titles = await itemsOnHome();
+    assert.ok(titles.includes("Only For Profile A"));
+  });
+
+  after(async () => {
+    for (const id of [openItemId, restrictedItemId]) {
+      if (id) {
+        await call(`/admin/content/${id}`, {
+          token: adminToken,
+          method: "DELETE",
+        });
+      }
+    }
+    for (const id of [profileA, profileB]) {
+      if (id) {
+        await call(`/admin/profiles/${id}`, {
+          token: adminToken,
+          method: "DELETE",
+        });
+      }
+    }
   });
 });
 

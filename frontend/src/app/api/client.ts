@@ -12,6 +12,14 @@ export function getWeddingSlug(): string {
   return currentSlug;
 }
 
+// Which "Who's watching" profile the viewer is currently on. Sent on every
+// request as `X-Profile-Id` so the backend can filter per-profile-restricted
+// content. Cleared (null) when no profile is selected.
+let currentProfileId: string | null = null;
+export function setProfileId(id: string | null) {
+  currentProfileId = id;
+}
+
 // Media URLs returned by the API are root-relative (/api/v1/media/...).
 // Resolve them against the API origin so they work both when the frontend
 // is same-origin as the API (production) and on a separate dev port.
@@ -56,6 +64,7 @@ export async function api<T>(
   const headers: Record<string, string> = {
     "X-Wedding-Slug": currentSlug,
   };
+  if (currentProfileId) headers["X-Profile-Id"] = currentProfileId;
   const token = tokenStore.get();
   if (token) headers["Authorization"] = `Bearer ${token}`;
 

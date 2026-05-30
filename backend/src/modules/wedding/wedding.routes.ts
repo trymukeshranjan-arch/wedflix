@@ -19,7 +19,7 @@ import { hashToken } from "../../lib/tokens";
 import { findMembership } from "../../lib/access";
 import { signSession, verifyPassword } from "../../services/auth";
 import { toContentDto } from "../content/serialize";
-import { buildHome, publicWedding } from "./home";
+import { buildHome, profileVisibilityFilter, publicWedding } from "./home";
 import type { AppEnv, User } from "../../lib/context";
 
 export const weddingRoutes = new Hono<AppEnv>();
@@ -27,9 +27,17 @@ export const weddingRoutes = new Hono<AppEnv>();
 // Public wedding info (branding / landing).
 weddingRoutes.get("/", (c) => ok(c, publicWedding(c.get("wedding"))));
 
-// Everything the homepage needs in one call: hero + content rows.
+// Everything the homepage needs in one call: hero + content rows. The
+// X-Profile-Id header (set by the WeddingApp after profile pick) scopes
+// per-profile-visible items.
 weddingRoutes.get("/home", async (c) =>
-  ok(c, await buildHome(c.get("wedding"), { includeDrafts: false })),
+  ok(
+    c,
+    await buildHome(c.get("wedding"), {
+      includeDrafts: false,
+      profileId: c.req.header("x-profile-id") ?? null,
+    }),
+  ),
 );
 
 // "Who's watching" profiles for this wedding. `hasPin` tells the client to
@@ -72,9 +80,12 @@ weddingRoutes.post("/profiles/:id/verify-pin", async (c) => {
   return ok(c, { ok: true });
 });
 
-// Seasons with their episodes.
+// Seasons with their episodes. Episodes are filtered by the current
+// viewer's profile via X-Profile-Id, same model as /home.
 weddingRoutes.get("/seasons", async (c) => {
   const w = c.get("wedding");
+  const profileId = c.req.header("x-profile-id") ?? null;
+
   const seasonRows = await db
     .select()
     .from(seasons)
@@ -89,6 +100,7 @@ weddingRoutes.get("/seasons", async (c) => {
       and(
         eq(contentItems.weddingId, w.id),
         eq(contentItems.status, "published"),
+        profileVisibilityFilter(profileId),
       ),
     )
     .orderBy(asc(contentItems.episodeNumber));

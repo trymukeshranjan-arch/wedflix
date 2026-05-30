@@ -30,6 +30,8 @@ export interface ContentDto {
   episodeNumber: number | null;
   tags: string[];
   visibility: string;
+  // Profile IDs allowed to see this item. Empty = visible to everyone.
+  visibleProfileIds: string[];
   status: string;
   assetStatus: string | null;
   createdAt: string;
@@ -62,6 +64,7 @@ export function toContentDto(
     episodeNumber: item.episodeNumber,
     tags: item.tags,
     visibility: item.visibility,
+    visibleProfileIds: item.visibleProfileIds,
     status: item.status,
     assetStatus: asset?.status ?? null,
     createdAt: item.createdAt.toISOString(),

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Routes, Route } from "react-router";
-import { api, setWeddingSlug } from "../api/client";
+import { api, setProfileId, setWeddingSlug } from "../api/client";
 import type { WeddingInfo } from "../api/types";
 import { applyTheme, resolveTheme } from "../lib/theme";
 import { IntroAnimation } from "./IntroAnimation";
@@ -58,6 +58,14 @@ function WeddingShell({ slug }: { slug: string }) {
   useEffect(() => {
     if (wedding) applyTheme(wedding.theme);
   }, [wedding]);
+
+  // Keep the api client's X-Profile-Id header in sync with the picked
+  // profile — every request goes out tagged with the right viewer, and the
+  // server uses it to filter per-profile-visible content.
+  useEffect(() => {
+    setProfileId(profile?.id ?? null);
+    return () => setProfileId(null);
+  }, [profile?.id]);
 
   const brand = wedding ? resolveTheme(wedding.theme).brandName : "WEDFLIX";
 

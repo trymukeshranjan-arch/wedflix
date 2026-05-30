@@ -95,6 +95,12 @@ export const contentItems = pgTable(
       onDelete: "set null",
     }),
     visibility: contentVisibility("visibility").notNull().default("all"),
+    // New per-profile visibility: empty array = everyone, populated = only
+    // listed profiles see this item. Filtered server-side via X-Profile-Id.
+    visibleProfileIds: uuid("visible_profile_ids")
+      .array()
+      .notNull()
+      .default([]),
     status: contentStatus("status").notNull().default("draft"),
     tags: text("tags").array().notNull().default([]),
     viewCount: integer("view_count").notNull().default(0),

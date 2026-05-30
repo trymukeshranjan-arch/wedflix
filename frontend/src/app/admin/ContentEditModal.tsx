@@ -118,7 +118,6 @@ export function ContentEditModal({
   const [description, setDescription] = useState(item?.description ?? "");
   const [type, setType] = useState(item?.type ?? "film");
   const [section, setSection] = useState(target.row ?? "");
-  const [visibility, setVisibility] = useState(item?.visibility ?? "all");
   const [status, setStatus] = useState(item?.status ?? "published");
   const [setAsHero, setSetAsHero] = useState(Boolean(target.isHero));
   const [tags, setTags] = useState((item?.tags ?? []).join(", "));
@@ -130,11 +129,22 @@ export function ContentEditModal({
   const [seasonList, setSeasonList] = useState<
     { id: string; number: number; title: string }[]
   >([]);
+  // Per-profile visibility. Empty array = visible to everyone; populated =
+  // only these profiles see the item. Fetched live from /admin/profiles.
+  const [visibleProfileIds, setVisibleProfileIds] = useState<string[]>(
+    item?.visibleProfileIds ?? [],
+  );
+  const [profileList, setProfileList] = useState<
+    { id: string; name: string; hasPin?: boolean }[]
+  >([]);
 
   useEffect(() => {
     api<{ id: string; number: number; title: string }[]>("/admin/seasons")
       .then(setSeasonList)
       .catch(() => setSeasonList([]));
+    api<{ id: string; name: string; hasPin?: boolean }[]>("/admin/profiles")
+      .then(setProfileList)
+      .catch(() => setProfileList([]));
   }, []);
 
   const [videoStatus, setVideoStatus] = useState<UploadState>(
@@ -193,7 +203,8 @@ export function ContentEditModal({
       title: title.trim(),
       subtitle: subtitle.trim() || undefined,
       description: description.trim() || undefined,
-      visibility,
+      // Per-profile visibility — empty = everyone, populated = restricted.
+      visibleProfileIds,
       status,
       collectionTitle: section.trim() || undefined,
       setAsHero: setAsHero || undefined,
@@ -382,18 +393,6 @@ export function ContentEditModal({
               />
             </div>
             <div>
-              <label className={labelCls}>Visibility</label>
-              <select
-                className={field}
-                value={visibility}
-                onChange={(e) => setVisibility(e.target.value)}
-              >
-                <option value="all">Everyone</option>
-                <option value="family">Family only</option>
-                <option value="couple">Couple only</option>
-              </select>
-            </div>
-            <div>
               <label className={labelCls}>Status</label>
               <select
                 className={field}
@@ -403,6 +402,61 @@ export function ContentEditModal({
                 <option value="published">Published</option>
                 <option value="draft">Draft</option>
               </select>
+            </div>
+          </div>
+
+          <div>
+            <label className={labelCls}>Visible to</label>
+            <div className="mt-1 border border-border rounded p-3 space-y-2 bg-background">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={visibleProfileIds.length === 0}
+                  onChange={() => setVisibleProfileIds([])}
+                />
+                <span className="font-medium">Everyone</span>
+                <span className="text-xs text-muted-foreground">
+                  (no restriction)
+                </span>
+              </label>
+              {profileList.length > 0 && (
+                <div className="border-t border-border pt-2 space-y-1.5">
+                  {profileList.map((p) => {
+                    const checked = visibleProfileIds.includes(p.id);
+                    return (
+                      <label
+                        key={p.id}
+                        className="flex items-center gap-2 text-sm cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => {
+                            // Checking a profile removes the implicit "everyone"
+                            // and adds this profile; unchecking removes it (and
+                            // an empty list reverts to "everyone").
+                            setVisibleProfileIds((cur) =>
+                              checked
+                                ? cur.filter((id) => id !== p.id)
+                                : [...cur, p.id],
+                            );
+                          }}
+                        />
+                        <span>{p.name}</span>
+                        {p.hasPin && (
+                          <span className="text-xs text-accent">🔒</span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              {profileList.length === 0 && (
+                <p className="text-xs text-muted-foreground/70 border-t border-border pt-2">
+                  No profiles yet. Add them from the Profiles button in the
+                  admin nav to restrict visibility.
+                </p>
+              )}
             </div>
           </div>
 

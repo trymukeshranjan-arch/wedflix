@@ -265,6 +265,9 @@ const contentColumns = z.object({
   durationSeconds: z.number().int().min(0).optional(),
   thumbnailUrl: z.string().optional(),
   visibility: z.enum(["all", "family", "couple"]).optional(),
+  // Empty array = visible to everyone; populated = restricted to these
+  // profile IDs only (filtered server-side via X-Profile-Id header).
+  visibleProfileIds: z.array(z.string().uuid()).optional(),
   status: z.enum(["draft", "published"]).optional(),
   tags: z.array(z.string()).optional(),
   eventDate: z.coerce.date().optional(),
@@ -340,6 +343,7 @@ adminRoutes.post("/content", async (c) => {
       durationSeconds: body.durationSeconds,
       thumbnailUrl: body.thumbnailUrl,
       visibility: body.visibility ?? "all",
+      visibleProfileIds: body.visibleProfileIds ?? [],
       status,
       tags: body.tags ?? [],
       eventDate: body.eventDate,

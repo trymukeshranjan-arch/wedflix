@@ -15,6 +15,8 @@ export interface ContentItem {
   episodeNumber: number | null;
   tags: string[];
   visibility: string;
+  // Profile IDs allowed to see this item. Empty = visible to everyone.
+  visibleProfileIds: string[];
   status: string;
   assetStatus: string | null;
   createdAt: string;
